@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<title>Hey Jev</title>
+<style>
+  :root { color-scheme: dark; }
+  body { background:#1e1e22; color:#fff; font-family:"Segoe UI",system-ui,sans-serif;
+         display:flex; flex-direction:column; align-items:center; justify-content:center;
+         min-height:100vh; margin:0; touch-action:manipulation; }
+  #ptt { width:min(70vw,240px); aspect-ratio:1; border-radius:50%; border:3px solid #3a3a40;
+         background:radial-gradient(circle at 35% 30%, #2c2c31, #1e1e22);
+         color:#e8e8e8; font-size:1.1rem; font-weight:600; letter-spacing:.05em;
+         user-select:none; -webkit-user-select:none; touch-action:none; }
+  #ptt.held { border-color:#e04545; color:#e04545; box-shadow:0 0 40px #e0454533; }
+  #status { margin-top:1.5rem; display:flex; align-items:center; gap:.6rem; }
+  #dot { font-size:1.4rem; color:#e0913d; }
+  #state { font-size:1.3rem; font-weight:600; }
+  #cancelbtn { display:none; background:#2c2c31; border:1px solid #3a3a40; color:#e04545;
+               border-radius:50%; width:26px; height:26px; margin-left:.45rem;
+               cursor:pointer; font-size:.75rem; line-height:1; }
+  #detail { color:#9a9aa2; font-size:.85rem; margin-top:.2rem; min-height:1.2em;
+            max-width:80vw; text-align:center; }
+  #timers { list-style:none; padding:0; color:#3fbfb5; font-family:Consolas,monospace; }
+  #timers li { margin:.2rem 0; }
+  #level { width:min(70vw,240px); height:6px; background:#2c2c31; border-radius:3px;
+           margin-top:.5rem; overflow:hidden; }
+  #levelbar { height:100%; width:0; background:#3fbf5f; border-radius:3px;
+              transition:width .08s linear; }
+  #heard { color:#9a9aa2; font-size:.85rem; margin-top:.6rem; min-height:1.2em;
+           max-width:86vw; text-align:center; }
+  #heard b { color:#e8e8e8; font-weight:600; }
+  .cost { color:#6f6f77; font-size:.7rem; font-family:Consolas,monospace; }
+  #tiles { display:grid; grid-template-columns:repeat(3, 1fr); gap:.5rem;
+           width:min(86vw,420px); margin-top:1rem; }
+  .tile { background:#232328; border:1px solid #2c2c31; border-radius:8px;
+          padding:.55rem .4rem; text-align:center; min-height:64px; }
+  #t-weather-tile { cursor:pointer; }
+  #t-weather-tile:active { background:#2c2c31; }
+  .tile .big { font-size:1.15rem; font-weight:600; }
+  .tile .small { color:#9a9aa2; font-size:.65rem; margin-top:.2rem; line-height:1.35; }
+  #textform { display:flex; gap:.4rem; margin-bottom:1.4rem; width:min(86vw,420px); }
+  #textbox { flex:1; background:#2c2c31; border:1px solid #3a3a40; border-radius:8px;
+             padding:.6rem .8rem; color:#fff; font-size:.95rem; }
+  #textbox:focus { outline:1px solid #3fbf5f; }
+  #sendbtn { background:#2c2c31; color:#e8e8e8; border:1px solid #3a3a40;
+             border-radius:8px; padding:0 1rem; cursor:pointer; }
+  #sendbtn:active { background:#3a3a40; }
+  #historybox { margin-top:1.2rem; width:min(86vw,420px); border:1px solid #2c2c31;
+                border-radius:8px; background:#232328; }
+  #historybox summary { cursor:pointer; padding:.55rem .8rem; color:#9a9aa2;
+                        font-size:.85rem; user-select:none; list-style:none;
+                        display:flex; align-items:center; }
+  #historybox summary::before { content:"▸"; margin-right:.45rem; color:#6f6f77;
+                                transition:transform .15s; }
+  #historybox[open] summary::before { transform:rotate(90deg); }
+  #historybox ul { margin:.2rem 0 .5rem; }
+  #history { list-style:none; padding:0; margin:.4rem 0 0; max-height:220px;
+             overflow-y:auto; width:100%; }
+  .hday { color:#6f6f77; font-size:.7rem; margin:.5rem .5rem .15rem;
+          text-transform:uppercase; letter-spacing:.05em;
+          display:flex; align-items:center; }
+  .hday span { flex:1; }
+  .trash { background:none; border:0; color:#6f6f77; cursor:pointer;
+           font-size:.8rem; padding:0 .3rem; opacity:.55; flex-shrink:0; }
+  .trash:hover { color:#e04545; opacity:1; }
+  #clearhist { background:none; border:0; cursor:pointer; font-size:.85rem;
+               color:#6f6f77; margin-left:auto; padding:0 .2rem; }
+  #clearhist:hover { color:#e04545; }
+  #history li { display:flex; align-items:center; gap:.5rem; padding:.35rem .5rem;
+                font-size:.8rem; }
+  #history .hmain { flex:1; color:#9a9aa2; text-align:left; overflow:hidden;
+                    text-overflow:ellipsis; white-space:nowrap; }
+  #history .hmain i { color:#6f6f77; font-style:normal; }
+  #history button { background:#2c2c31; color:#3fbf5f; border:1px solid #3a3a40;
+                    border-radius:50%; width:26px; height:26px; cursor:pointer;
+                    font-size:.7rem; line-height:1; flex-shrink:0; }
+  #history button.rerun { color:#e0913d; }
+  #history button.editbtn { color:#3d7be0; }
+  #history button:active { background:#3a3a40; }
+  #foot { position:fixed; bottom:.8rem; font-size:.75rem; color:#6f6f77; }
+  #foot a { color:#6f6f77; }
+  #tokenbox { display:none; position:fixed; inset:0; background:#1e1e22f0;
+              flex-direction:column; align-items:center; justify-content:center; z-index:50; }
+  #tokenbox .tk-title { font-size:1.1rem; font-weight:600; margin-bottom:1rem; }
+  #tokenbox input { width:min(70vw,280px); background:#2c2c31; border:1px solid #3a3a40;
+                    border-radius:8px; padding:.6rem .8rem; color:#fff; font-size:1rem;
+                    text-align:center; }
+  #tokenbox input:focus { outline:1px solid #3fbf5f; }
+  #tokenbox .btnrow { margin-top:.8rem; }
+  #tokenbox button { background:#3fbf5f; color:#10240f; font-weight:600; border:0;
+                     border-radius:8px; padding:.6rem 1.2rem; cursor:pointer; }
+  #tokenbox .small { color:#6f6f77; font-size:.75rem; margin-top:1rem; }
+  #tokenbox .small a { color:#3fbf5f; text-decoration:none; }
+</style>
+</head>
+<body>
+  <form id="textform"><input id="textbox" autocomplete="off" autocapitalize="none"
+    spellcheck="false" placeholder="Type a command, press Enter"><button id="sendbtn">Send</button></form>
+  <button id="ptt">HOLD TO<br>TALK</button>
+  <div id="level"><div id="levelbar"></div></div>
+  <div id="status"><span id="dot">●</span><span id="state">Starting</span><button id="cancelbtn" title="cancel this turn">✕</button></div>
+  <div id="detail">Connecting…</div>
+  <div id="heard"></div>
+  <div id="tiles">
+    <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
+    <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
+    <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
+  </div>
+  <ul id="timers"></ul>
+  <details id="historybox">
+    <summary>History <small id="historycount"></small>
+      <button id="clearhist" title="clear entire history">🗑</button></summary>
+    <ul id="history"></ul>
+  </details>
+  <div id="tokenbox">
+    <div class="tk-title">Access token required</div>
+    <input id="tokeninput" type="password" autocomplete="off" placeholder="server REMOTE_TOKEN">
+    <div class="btnrow"><button id="tokensave">Save &amp; connect</button></div>
+    <div class="small">or add your own keys in <a href="/settings">Settings</a></div>
+  </div>
+  <div id="foot"><a href="/settings">Settings</a></div>
+  <script src="/app.js"></script>
+</body>
+</html>

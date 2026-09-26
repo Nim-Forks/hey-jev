@@ -1,0 +1,9 @@
+requests>=2.32
+python-dotenv>=1.0
+numpy>=2.0
+sounddevice>=0.5
+soundfile>=0.13
+faster-whisper>=1.2
+# optional, X11 only:
+# pynput>=1.8        # push-to-talk hotkey
+# python3-tk (apt)   # status window

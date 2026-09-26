@@ -1,0 +1,18 @@
+# Static reference copy — generate the real unit with ./deploy-service.sh
+# (it fills in the user, home and venv paths for the machine it runs on).
+[Unit]
+Description=Hey Jev remote (web mic/PTT server)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+User=<user>
+Environment=PYTHONUTF8=1
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+WorkingDirectory=<home>/hey-jev
+ExecStart=<home>/hey-jev/.venv/bin/python -u -X utf8 siri.py --remote
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
