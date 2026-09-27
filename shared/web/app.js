@@ -1,13 +1,21 @@
 // hey-jev web remote: press-and-hold PTT, streams PCM to the PC over
 // WebSocket, plays the reply wav.
 const $ = (id) => document.getElementById(id);
-const COLORS = {
-  Starting: "#e0913d", Ready: "#3fbf5f", Listening: "#e04545",
-  Transcribing: "#3d7be0", Thinking: "#9355d6", "Doing it": "#e0913d",
-  Speaking: "#3fbfb5", "Something went wrong": "#e04545", "Time's up": "#d6c437",
-};
 let ws = null, wsReady = false, session = null, workletNode = null;
 let recording = false, chunksSent = 0;
+
+// ------------------------------------------------------------- theme (per device)
+const THEMES = ["default", "hal", "ring", "steam", "ouro", "matrix"];
+function loadTheme() {
+  const t = localStorage.getItem("heyjev.theme");
+  return THEMES.includes(t) ? t : "default";
+}
+function applyTheme(name) {
+  if (!THEMES.includes(name)) name = "default";
+  if (name === "default") delete document.body.dataset.theme;
+  else document.body.dataset.theme = name;
+  localStorage.setItem("heyjev.theme", name);
+}
 
 // ------------------------------------------------------------- keys (localStorage)
 const KEY_FIELDS = [
@@ -83,7 +91,7 @@ function askNotificationPermission() {
 let retryTimer = null, retries = 0, sentNtfy = null;
 const BUSY_STATES = ["Transcribing", "Thinking", "Doing it", "Speaking"];
 function setStatus(state, detail) {
-  $("dot").style.color = COLORS[state] || "#fff";
+  document.body.dataset.state = state;   // dot colour comes from CSS (per theme)
   $("state").textContent = state;
   $("cancelbtn").style.display = BUSY_STATES.includes(state) ? "inline-block" : "none";
   clearInterval(setStatus._t);
@@ -471,6 +479,7 @@ function sendText() {
 
 // ------------------------------------------------------------- wire-up
 window.addEventListener("load", () => {
+  applyTheme(loadTheme());
   connect();
   renderHistory();
   const ptt = $("ptt");

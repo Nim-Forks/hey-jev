@@ -15,6 +15,9 @@
   input { flex:1; background:#2c2c31; border:0; border-radius:6px; padding:.55rem .7rem;
           color:#fff; font-size:.95rem; }
   input:focus { outline:1px solid #3fbf5f; }
+  select { flex:1; background:#2c2c31; border:0; border-radius:6px; padding:.55rem .7rem;
+           color:#fff; font-size:.95rem; }
+  select:focus { outline:1px solid #3fbf5f; }
   .eye { background:#2c2c31; border:0; border-radius:6px; color:#9a9aa2; padding:0 .7rem; }
   .btns { margin-top:1.6rem; display:flex; gap:.6rem; flex-wrap:wrap; }
   button { border:0; border-radius:6px; padding:.6rem 1.2rem; font-size:.9rem; cursor:pointer; }
@@ -74,6 +77,21 @@ server's default topic.</p>
 <p class="hint">While this page is open, alerts also vibrate, show a
 notification and speak right here — allow notifications when the browser
 asks (or tap HOLD TO TALK once).</p>
+
+<h2>Theme (this device)</h2>
+<div class="row">
+  <select id="k-theme">
+    <option value="default">Default — clean dark, green accents</option>
+    <option value="hal">HAL-9000 — black, red eye, pulse</option>
+    <option value="ring">LOTR Ring — gold on charcoal, serif</option>
+    <option value="steam">Steampunk — sepia, brass and copper</option>
+    <option value="ouro">Ouroboros — deep teal, rotating ring</option>
+    <option value="matrix">Matrix — phosphor green, scanlines</option>
+  </select>
+</div>
+<p class="hint">Styles the mic page on this device only (saved in localStorage).
+The theme fonts (Cormorant Garamond, Playfair Display, Space Grotesk) load
+from Google Fonts; the default theme uses none of them.</p>
 
 <h2>Shared token (alternative to keys)</h2>
 <div class="row">
@@ -344,6 +362,13 @@ $("saventfy").onclick = () => {
   const msg = $("msg");
   if (msg) { msg.style.color = "#3fbf5f"; msg.textContent = v ? "ntfy topic saved: " + v + " — back to the mic page to apply." : "ntfy topic cleared (server default will be used)."; }
 };
+
+(function initTheme() {
+  const sel = $("k-theme");
+  const saved = localStorage.getItem("heyjev.theme");
+  sel.value = [...sel.options].some((o) => o.value === saved) ? saved : "default";
+  sel.onchange = () => localStorage.setItem("heyjev.theme", sel.value);
+})();
 
 build(); load();
 </script>
