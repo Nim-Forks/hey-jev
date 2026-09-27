@@ -1,18 +1,20 @@
-"""Linux platform layer for hey-jev: ACTIONS, hooks, entry points.
+"""macOS platform layer for hey-jev: ACTIONS, hooks, entry points.
 
 The brain lives in shared/brain.py — this file wires the platform:
-pactl volume/mute, playerctl media, gsettings dark mode, loginctl lock,
-systemctl suspend, desktop-id app launches.
+osascript app/volume/media/dark-mode commands, afplay playback,
+Keychain secrets, AppKit UI (assistant_ui.py).
+
+**Untested** — no Mac available. The action layer was copied from the
+original root siri.py (which was tested on macOS Sequoia/Tahoe).
 """
 import os
-import re
 import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
-import subprocess
+import random
 import threading
 import time
 
@@ -20,6 +22,14 @@ from shared import brain, config
 
 config.TIMERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "timers.json")
 config.CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "tts")
+
+# ------------------------------------------------------------------- macOS helpers
+
+def osa(script):
+    result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "AppleScript failed")
+    return result.stdout.strip()
 
 
 def sh(*cmd):
@@ -29,170 +39,139 @@ def sh(*cmd):
     return result.stdout.strip()
 
 
-def _sink():
-    return "@DEFAULT_SINK@"
-
-
-def volume():
-    out = sh("pactl", "get-sink-volume", _sink())
-    m = re.search(r"(\d+)%", out)
-    if not m:
-        raise RuntimeError(f"could not read volume: {out!r}")
-    return int(m.group(1))
-
-
-def set_volume(pct):
-    sh("pactl", "set-sink-volume", _sink(), f"{int(max(0, min(100, pct)))}%")
-
-
-def set_mute(m):
-    sh("pactl", "set-sink-mute", _sink(), "1" if m else "0")
-
-
-def is_muted():
-    return sh("pactl", "get-sink-mute", _sink()).strip().lower() == "muted: yes"
-
-
 APPS = {
-    "spotify": {"name": "Spotify", "process": "spotify", "launch": ["sh", "-c", "gtk-launch spotify >/dev/null 2>&1 || xdg-open spotify:"]},
-    "slack": {"name": "Slack", "process": "slack", "launch": ["sh", "-c", "gtk-launch slack >/dev/null 2>&1 || xdg-open slack:"]},
-    "chrome": {"name": "Google Chrome", "process": "chrome", "launch": ["sh", "-c", "gtk-launch google-chrome >/dev/null 2>&1 || xdg-open https://www.google.com"]},
-    "vscode": {"name": "Visual Studio Code", "process": "code", "launch": ["sh", "-c", "gtk-launch code >/dev/null 2>&1 || code"]},
-    "explorer": {"name": "Files", "process": "nautilus", "launch": ["sh", "-c", "gtk-launch org.gnome.Nautilus >/dev/null 2>&1 || xdg-open ~"]},
-    "edge": {"name": "Microsoft Edge", "process": "msedge", "launch": ["sh", "-c", "gtk-launch microsoft-edge >/dev/null 2>&1 || xdg-open https://www.bing.com"]},
-    "notepad": {"name": "Text Editor", "process": "gedit", "launch": ["sh", "-c", "gtk-launch org.gnome.gedit >/dev/null 2>&1 || gedit"]},
-    "terminal": {"name": "Terminal", "process": "x-terminal-emulator", "launch": ["x-terminal-emulator"]},
+    "spotify": {"name": "Spotify", "process": "Spotify", "launch": ["open", "-a", "Spotify"]},
+    "slack": {"name": "Slack", "process": "Slack", "launch": ["open", "-a", "Slack"]},
+    "chrome": {"name": "Google Chrome", "process": "Google Chrome", "launch": ["open", "-a", "Google Chrome"]},
+    "vscode": {"name": "Visual Studio Code", "process": "Code", "launch": ["open", "-a", "Visual Studio Code"]},
+    "explorer": {"name": "Finder", "process": "Finder", "launch": ["open", "-a", "Finder"]},
+    "edge": {"name": "Microsoft Edge", "process": "Microsoft Edge", "launch": ["open", "-a", "Microsoft Edge"]},
+    "notepad": {"name": "Notes", "process": "Notes", "launch": ["open", "-a", "Notes"]},
+    "terminal": {"name": "Terminal", "process": "Terminal", "launch": ["open", "-a", "Terminal"]},
 }
 LEVELS = {"silent": 0, "quiet": 25, "medium": 50, "loud": 75, "max": 100}
 
 
 def process_running(proc):
-    r = subprocess.run(["pgrep", "-x", proc], capture_output=True)
-    return r.returncode == 0
+    r = osa(f'application "{proc}" is running')
+    return r == "true"
 
 
-def open_app(key, wait=6.0):
+def open_app(key, wait=5.0):
     app = APPS[key]
-    sh(*app["launch"])
+    sh("open", "-a", APPS[key]["name"])
     t = time.time()
-    while time.time() - t < wait and not process_running(app["process"]):
-        time.sleep(0.3)
+    while time.time() - t < wait and not process_running(APPS[key]["name"]):
+        time.sleep(0.2)
 
 
-def press_media(action):
-    sh("playerctl", action)
+def spotify_volume():
+    return int(osa('tell application "Spotify" to get sound volume'))
+
+
+def spotify_play(tries=12):
+    for _ in range(tries):
+        osa('tell application "Spotify" to play')
+        time.sleep(0.5)
+        if osa('tell application "Spotify" to player state') == "playing":
+            return
+    raise RuntimeError("Spotify never started playing")
+
+
+def press_media(key_name):
+    if key_name == "media_play":
+        osa('tell application "Spotify" to play')
+    elif key_name == "media_pause":
+        osa('tell application "Spotify" to pause')
+    elif key_name == "media_next":
+        osa('tell application "Spotify" to next track')
+    elif key_name == "media_previous":
+        osa('tell application "Spotify" to previous track')
     time.sleep(0.4)
 
 
-def spotify_running():
-    return process_running("spotify")
+def volume():
+    return int(osa("output volume of (get volume settings)"))
+
+
+def set_volume(pct):
+    osa(f"set volume output volume {int(max(0, min(100, pct)))}")
+
+
+def set_mute(m):
+    osa(f"set volume output muted {'true' if m else 'false'}")
+
+
+def is_muted():
+    return osa("output muted of (get volume settings)") == "true"
 
 
 def set_dark_mode(on):
-    sh("gsettings", "set", "org.gnome.desktop.interface", "color-scheme",
-       "prefer-dark" if on else "prefer-light")
+    osa(f'tell application "System Events" to tell appearance preferences to set dark mode to {str(on).lower()}')
 
 
 def dark_mode_on():
-    out = sh("gsettings", "get", "org.gnome.desktop.interface", "color-scheme")
-    return "dark" not in out
+    return osa('tell application "System Events" to tell appearance preferences to get dark mode') == "true"
 
 
 ACTIONS = {
     "app_open": lambda a: open_app(a),
-    "app_quit": lambda a: subprocess.run(["pkill", "-x", APPS[a]["process"]]),
-    "volume_up": lambda _: set_volume(min(100, volume() + 20)),
-    "volume_down": lambda _: set_volume(max(0, volume() - 20)),
-    "volume_mute": lambda _: set_mute(True),
-    "volume_unmute": lambda _: set_mute(False),
-    "volume_set": lambda lvl: set_volume(LEVELS.get(lvl, 50)),
-    "spotify_volume_up": lambda _: set_volume(min(100, volume() + 20)),
-    "spotify_volume_down": lambda _: set_volume(max(0, volume() - 20)),
-    "spotify_volume_mute": lambda _: set_mute(True),
-    "spotify_volume_unmute": lambda _: set_mute(False),
-    "spotify_volume_set": lambda lvl: set_volume(LEVELS.get(lvl, 50)),
+    "app_quit": lambda a: osa(f'tell application "{APPS[a]["name"]}" to quit'),
+    "volume_up": lambda _: osa(f"set volume output volume {min(100, volume() + 20)}"),
+    "volume_down": lambda _: osa(f"set volume output volume {max(0, volume() - 20)}"),
+    "volume_mute": lambda _: osa("set volume output muted true"),
+    "volume_unmute": lambda _: osa("set volume output muted false"),
+    "volume_set": lambda lvl: osa(f"set volume output volume {LEVELS.get(lvl, 50)}"),
+    "spotify_volume_up": lambda _: osa(f'tell application "Spotify" to set sound volume to {min(100, spotify_volume() + 20)}'),
+    "spotify_volume_down": lambda _: osa(f'tell application "Spotify" to set sound volume to {max(0, spotify_volume() - 20)}'),
+    "spotify_volume_mute": lambda _: osa('tell application "Spotify" to set sound volume to 0'),
+    "spotify_volume_unmute": lambda _: osa('tell application "Spotify" to set sound volume to 50'),
+    "spotify_volume_set": lambda lvl: osa(f'tell application "Spotify" to set sound volume to {LEVELS.get(lvl, 50)}'),
     "display_dark_on": lambda _: set_dark_mode(True),
     "display_dark_off": lambda _: set_dark_mode(False),
     "display_toggle": lambda _: set_dark_mode(not dark_mode_on()),
-    "media_play": lambda _: press_media("play-pause"),
-    "media_pause": lambda _: press_media("play-pause"),
-    "media_next": lambda _: press_media("next"),
-    "media_previous": lambda _: press_media("previous"),
-    "system_lock": lambda _: sh("loginctl", "lock-session"),
-    "system_sleep": lambda _: sh("systemctl", "suspend"),
+    "media_play": lambda _: spotify_play(),
+    "media_pause": lambda _: press_media("media_pause"),
+    "media_next": lambda _: press_media("media_next"),
+    "media_previous": lambda _: press_media("media_previous"),
+    "system_lock": lambda _: osa('tell application "System Events" to keystroke "q" using {control down, command down}'),
+    "system_sleep": lambda _: sh("pmset", "sleepnow"),
 }
 
 
 def machine_context():
     try:
-        import socket
-        import glob
-        up_s = float(open("/proc/uptime").read().split()[0])
-        load1 = open("/proc/loadavg").read().split()[0]
-        mem = {}
-        for line in open("/proc/meminfo"):
-            k, v = line.split(":", 1)
-            mem[k.strip()] = int(v.strip().split()[0])
-        ram = f"{mem['MemAvailable'] / 1048576:.1f}/{mem['MemTotal'] / 1048576:.1f}GB free"
-        df = subprocess.run(["df", "-BG", "/"], capture_output=True, text=True).stdout
-        disk_free = df.splitlines()[-1].split()[3]
-        bat = None
-        for b in glob.glob("/sys/class/power_supply/BAT*/capacity"):
-            bat = open(b).read().strip() + "%"
-            break
-        apps = []
-        for label, proc in (("Spotify", "spotify"), ("Chrome", "chrome"),
-                            ("VS Code", "code"), ("Firefox", "firefox")):
-            if process_running(proc):
-                apps.append(label)
-        out = (f"host={socket.gethostname()}; os=Debian Linux; "
-               f"up={int(up_s // 3600)}h{int(up_s % 3600 // 60)}m; load={load1}; "
-               f"ram={ram}; disk/={disk_free} free; battery={bat or 'n/a'}; "
-               f"running={','.join(apps) or 'none'}")
+        host = osa("do shell script 'hostname -s'")
+        uptime = osa("do shell script 'uptime | sed \\'s/.*up//; s/,.*//\\''")
+        ram = osa("do shell script 'sysctl -n hw.memsize | awk \\'{print $1/1073741824 \\\"GB\\\"}\\''")
+        battery = osa("pmset -g batt | grep -o '[0-9]*%' | head -1") if "laptop" in osa(
+            "do shell script 'sysctl -n hw.model'") else "n/a"
+        out = f"host={host}; os=macOS; up={uptime.strip()}; ram={ram}; battery={battery or 'n/a'}"
     except Exception as e:
         return f"(machine status unavailable: {e})"
     return out
 
 
 def chime():
-    for f in ("/usr/share/sounds/freedesktop/stereo/complete.oga",
-              "/usr/share/sounds/freedesktop/stereo/bell.oga"):
-        if os.path.exists(f):
-            subprocess.run(["paplay", f], capture_output=True)
-            return
-    print("\a", end="", flush=True)
+    subprocess.run(["afplay", "/System/Library/Sounds/Glass.aiff"], capture_output=True)
 
 
 def play_wav(path):
-    import numpy as np
-    import sounddevice as sd
-    import soundfile as sf
-    data, sr = sf.read(path, dtype="float32")
-    if data.ndim > 1:
-        data = data[:, 0]
-    sd.play(data, sr)
-    sd.wait()
+    subprocess.run(["afplay", path], capture_output=True)
 
 
 # wire hooks into config
 config.machine_context_hook = machine_context
 config.play_wav_hook = play_wav
-config.APPS = APPS
+config.chime_hook = chime
+config.APPS = {k: {"name": v["name"]} for k, v in APPS.items()}
 config.ACTIONS = ACTIONS
 
 
+# ------------------------------------------------------------------- STT (mic + push to talk)
+
 def pick_input():
-    if sd.default.device[0] != -1:
-        return None
-    devices = sd.query_devices()
-    ins = [i for i, d in enumerate(devices) if d["max_input_channels"] > 0]
-    mics = [i for i in ins if "monitor" not in devices[i]["name"].lower()]
-    named = [i for i in mics if "mic" in devices[i]["name"].lower() or "input" in devices[i]["name"].lower()]
-    pick = (named or mics or ins)[0] if (named or mics or ins) else None
-    if pick is not None:
-        print(f"[mic] no default input device set — using "
-              f"{pick}: {devices[pick]['name']!r} (override with --device)")
-    return pick
+    return None  # macOS handles default input via CoreAudio
 
 
 class Recorder:
@@ -269,7 +248,7 @@ def run_voice_assistant(notify=None, controls=None, mode="ptt", device=None):
     from faster_whisper import WhisperModel
     print("loading whisper...")
     brain.emit(notify, "Starting", "Loading Whisper…")
-    model_name, language = _stt_spec()
+    model_name, language = stt_spec()
     model = WhisperModel(model_name, device="cpu", compute_type="int8")
     brain.load_timers()
     rec = Recorder(device=device)
@@ -343,7 +322,7 @@ def run_voice_assistant(notify=None, controls=None, mode="ptt", device=None):
     def set_mode(new):
         rec.wake = new == "wake"
         armed_until[0] = 0
-        print(f"\n[mode: {'always listening' if rec.wake else 'hold right Alt'}]")
+        print(f"\n[mode: {'always listening' if rec.wake else 'hold right Option'}]")
         if not busy.locked():
             brain.emit(notify, "Ready", ready_text(rec.wake))
 
@@ -351,7 +330,7 @@ def run_voice_assistant(notify=None, controls=None, mode="ptt", device=None):
         if not rec.wake and not rec.on and not busy.locked():
             rec.start()
             print("\n[listening]", end="", flush=True)
-            brain.emit(notify, "Listening", "Release right Alt when you\u2019re done")
+            brain.emit(notify, "Listening", "Release right Option when you\u2019re done")
 
     def stop_recording():
         if rec.on:
@@ -401,20 +380,24 @@ def run_voice_assistant(notify=None, controls=None, mode="ptt", device=None):
         with keyboard.Listener(on_press=on_press, on_release=on_release) as l:
             l.join()
     else:
-        print("[ptt] no keyboard listener (headless) — use --wake or the web remote")
+        print("[ptt] no keyboard listener — use --wake or the web remote")
         threading.Event().wait()
 
 
-def _stt_spec():
+def stt_spec():
     if config.WHISPER_LANGUAGES - {"en"}:
         return "small", None
     return config.WHISPER_MODEL, "en"
 
 
+def say_line(key, **fmt):
+    return brain.say_line(key, **fmt)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--text", help="skip the mic, run one turn on this transcript")
-    ap.add_argument("--ui", action="store_true", help="show the floating status window (X11)")
+    ap.add_argument("--ui", action="store_true", help="show the floating status window (tray icon)")
     ap.add_argument("--wake", action="store_true", help="always listening")
     ap.add_argument("--remote", action="store_true", help="serve the browser mic/PTT remote")
     ap.add_argument("--device", help="input device name/index for the mic")
@@ -439,9 +422,9 @@ def main():
         remote.run_remote()
         return
     if not config.FISH_KEY:
-        sys.exit("need FISH_AUDIO_API_KEY in Credential Manager or .env")
+        sys.exit("need FISH_AUDIO_API_KEY in Keychain or .env")
     if config.decision_backend() is None:
-        sys.exit("need a decision backend in Credential Manager or .env: "
+        sys.exit("need a decision backend in Keychain or .env: "
                  "TYPESAFE_API_KEY, or KEV_URL + KEV_API_KEY, or OPENROUTER_API_KEY")
     if args.text:
         brain.handle(args.text)
@@ -452,6 +435,6 @@ def main():
 def say_line(key, **fmt):
     return brain.say_line(key, **fmt)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

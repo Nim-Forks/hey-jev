@@ -1,9 +1,4 @@
-"""Thin remote wrapper: wires the platform layer into shared/remote_server.
-
-Do NOT `import siri` here — the repo root's macOS siri.py would shadow the
-platform layer. The platform hooks (chime, play_wav, machine_context) are
-already wired into shared/config by the platform siri.py.
-"""
+"""Thin remote wrapper: wires the platform layer into shared/remote_server."""
 from shared import brain, config
 from shared import remote_server as rs
 
