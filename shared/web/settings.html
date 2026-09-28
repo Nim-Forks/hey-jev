@@ -10,6 +10,7 @@
   body { background:#1e1e22; color:#fff; font-family:"Segoe UI",system-ui,sans-serif;
          max-width:520px; margin:0 auto; padding:2rem 1rem; }
   h1 { font-size:1.4rem; } h2 { font-size:1rem; color:#9a9aa2; margin-top:2rem; }
+  h2:first-of-type { margin-top:.8rem; }
   label { display:block; font-size:.85rem; color:#9a9aa2; margin:.9rem 0 .25rem; }
   .row { display:flex; gap:.4rem; }
   input { flex:1; background:#2c2c31; border:0; border-radius:6px; padding:.55rem .7rem;
@@ -19,6 +20,10 @@
            color:#fff; font-size:.95rem; }
   select:focus { outline:1px solid #3fbf5f; }
   .eye { background:#2c2c31; border:0; border-radius:6px; color:#9a9aa2; padding:0 .7rem; }
+  .backbtn { flex-shrink:0; display:flex; align-items:center; background:#2c2c31;
+             border-radius:6px; color:#e8e8e8; padding:.6rem 1rem; font-size:.9rem;
+             text-decoration:none; }
+  .backbtn:active { background:#3a3a40; }
   .btns { margin-top:1.6rem; display:flex; gap:.6rem; flex-wrap:wrap; }
   button { border:0; border-radius:6px; padding:.6rem 1.2rem; font-size:.9rem; cursor:pointer; }
   #save { background:#3fbf5f; color:#10240f; font-weight:600; }
@@ -36,6 +41,22 @@
 </head>
 <body>
 <h1>Hey Jev — Settings</h1>
+
+<h2>Theme (this device)</h2>
+<div class="row">
+  <a class="backbtn" href="/">&#8592; Back</a>
+  <select id="k-theme">
+    <option value="default">Default — clean dark, green accents</option>
+    <option value="hal">HAL-9000 — black, red eye, pulse</option>
+    <option value="ring">LOTR Ring — gold on charcoal, serif</option>
+    <option value="steam">Steampunk — sepia, brass and copper</option>
+    <option value="ouro">Ouroboros — deep teal, rotating ring</option>
+    <option value="matrix">Matrix — phosphor green, scanlines</option>
+  </select>
+</div>
+<p class="hint">Styles the mic page on this device only (saved in localStorage).
+The theme fonts (Cormorant Garamond, Playfair Display, Space Grotesk) load
+from Google Fonts; the default theme uses none of them.</p>
 
 <h2>Where to get the keys</h2>
 <p class="hint">
@@ -78,21 +99,6 @@ server's default topic.</p>
 notification and speak right here — allow notifications when the browser
 asks (or tap HOLD TO TALK once).</p>
 
-<h2>Theme (this device)</h2>
-<div class="row">
-  <select id="k-theme">
-    <option value="default">Default — clean dark, green accents</option>
-    <option value="hal">HAL-9000 — black, red eye, pulse</option>
-    <option value="ring">LOTR Ring — gold on charcoal, serif</option>
-    <option value="steam">Steampunk — sepia, brass and copper</option>
-    <option value="ouro">Ouroboros — deep teal, rotating ring</option>
-    <option value="matrix">Matrix — phosphor green, scanlines</option>
-  </select>
-</div>
-<p class="hint">Styles the mic page on this device only (saved in localStorage).
-The theme fonts (Cormorant Garamond, Playfair Display, Space Grotesk) load
-from Google Fonts; the default theme uses none of them.</p>
-
 <h2>Shared token (alternative to keys)</h2>
 <div class="row">
   <input id="k-REMOTE_TOKEN" type="password" placeholder="server REMOTE_TOKEN (optional)">
@@ -104,7 +110,7 @@ keys authenticate you.</p>
 <div class="btns">
   <button id="save">Save</button>
   <button id="test">Test keys</button>
-  <a href="/" style="align-self:center;color:#3fbf5f;text-decoration:none;margin-left:.4rem">← Back</a>
+  <a class="backbtn" href="/">&#8592; Back</a>
 </div>
 <div id="msg"></div>
 <p class="warn">⚠ localStorage is unencrypted and readable by anyone with this

@@ -534,7 +534,7 @@ def server_notify(conn, state, detail=""):
 
 def _ping_decision():
     try:
-        ans, ms, cost = brain.jev("ping", {
+        ans, ms, cost = config.jev("ping", {
             "category": {"type": "choice", "instructions": "What is this?",
                          "criteria": {"ping": "a test", "other": "anything else"}}})
         return True, f"decision backend answered in {ms}ms (${cost:.6f})"
