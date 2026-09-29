@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # Generate a systemd unit for hey-jev and install it, filling in the current
-# user, home and venv paths. Usage:
-#   bash deploy-service.sh            -> service name defaults to hey-jev
-#   bash deploy-service.sh my-name    -> service name my-name
+# user, venv and checkout paths. Supports several checkouts on one box (each
+# with its own service name and REMOTE_PORT), e.g. beta + production:
+#   bash deploy-service.sh               -> service name defaults to hey-jev
+#   bash deploy-service.sh hey-jev-prod  -> second instance, own checkout dir
+# Paths come from the script's location: <checkout>/linux/deploy-service.sh.
 set -e
 cd "$(dirname "$0")"
 
+LINUX_DIR=$(pwd)
+CHECKOUT_DIR=$(dirname "$LINUX_DIR")
+ENV_FILE="$CHECKOUT_DIR/.env"
 RUN_USER=$(whoami)
 RUN_HOME=$(getent passwd "$RUN_USER" | cut -d: -f6)
-SERVICE_DIR="$RUN_HOME/hey-jev"
-VENV_PY="$SERVICE_DIR/.venv/bin/python"
+VENV_PY="$LINUX_DIR/.venv/bin/python"
 SERVICE_NAME="${1:-hey-jev}"
 UNIT_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 
@@ -23,8 +27,8 @@ Wants=network-online.target
 User=$RUN_USER
 Environment=PYTHONUTF8=1
 Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)
-WorkingDirectory=$SERVICE_DIR
-ExecStart=$VENV_PY -u -X utf8 siri.py --remote
+WorkingDirectory=$LINUX_DIR
+ExecStart=$VENV_PY -u -X utf8 remote.py
 Restart=always
 RestartSec=3
 
@@ -38,7 +42,7 @@ sudo systemctl daemon-reload
 sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
 sudo systemctl enable --now "$SERVICE_NAME"
 
-PORT=$(grep -E "^REMOTE_PORT=" .env 2>/dev/null | head -1 | cut -d= -f2-)
+PORT=$(grep -E "^REMOTE_PORT=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2-)
 PORT=${PORT:-8765}
 
 for i in $(seq 1 10); do
