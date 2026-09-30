@@ -1,0 +1,129 @@
+# Implementation Plan — tts-alternatives
+
+## Task Format Template
+
+Checkbox list, two levels max. `(P)` = parallel-safe with its preceding peers. `_Depends:_` only where ordering alone is not obvious. Each executable task carries an observable completion bullet and numeric requirement IDs.
+
+## Tasks
+
+- [ ] 1. Foundation: test infrastructure, settings, and assets
+- [ ] 1.1 Set up the test infrastructure for the shared core
+  - Create the shared test package with pytest configured to run from either platform folder.
+  - Add a tiny synthetic voice fixture (a few seconds of generated tone/speech-like audio) used by later clip tests, so tests never download anything.
+  - Observable: `pytest` runs green from both platform folders with zero network access.
+  - _Requirements: 2.1, 10.2_
+- [ ] 1.2 Add the feature settings and repair the missing STT attributes
+  - Introduce the backend switch, the reference-clip setting, the local-model variant setting, and the two persona storage paths as overridable module attributes following the existing path-override pattern.
+  - Define the Whisper model name and the configured-languages set as real attributes (they are referenced by the remote server and both platforms today but defined nowhere — latent startup failure), preserving the platform env override behavior.
+  - Unknown backend values must be detected at startup, not silently ignored.
+  - Observable: importing the shared core exposes all new settings with documented defaults, and `WHISPER_MODEL`/`WHISPER_LANGUAGES` resolve instead of raising.
+  - _Requirements: 1.4, 3.2, 3.3, 5.2_
+  - _Boundary: shared config_
+- [ ] 1.3 Ship the bundled default voice clip
+  - Promote the sourced public-domain clip from the feature docs folder to the shared assets location used at runtime.
+  - Keep the original in the feature docs as the sourcing artifact; document the swap path in the docs.
+  - Observable: the runtime default clip path resolves to an existing 25 s wav on a fresh checkout.
+  - _Requirements: 3.2_
+- [ ] 1.4 Add the optional local-TTS dependency set
+  - Create the optional requirements file pinning the local TTS engine for both platforms, and add pointer comments in each platform's requirements file.
+  - Pin soundfile to a version with mp3 read support; keep the base install unchanged when the file is not installed.
+  - Observable: installing base requirements leaves the app unchanged; installing the optional file adds only the local engine's dependencies.
+  - _Requirements: 1.2, 8.1_
+
+- [ ] 2. Core: backend switch, local engine, personas, routing
+- [ ] 2.1 Introduce the TTS seam dispatch with tags, cache key, and the unchanged cloud path
+  - Move the existing cloud render into the new TTS module verbatim (same request, same model string, same wav output) and make the brain's render entry point a thin delegate so every existing caller keeps working.
+  - Dispatch on the backend setting read at call time (per-turn patchable); the cloud path remains the default with identical behavior.
+  - Implement the tag mapping: known tags converted per backend, unknown tags stripped before synthesis, tag-free text untouched; reminder alert lines flow through the same mapping.
+  - Implement the reply cache key as backend + voice-clip identity + mapped text, with clip identity taken from the clip file's content hash; unchanged voice keeps old behavior (one-time cache rebuild accepted).
+  - Resolve the active clip: configured clip if set, bundled default when unset; a configured-but-missing clip raises a clear error naming the file.
+  - Render failures raise a dedicated error; the dispatcher never silently falls back to another backend.
+  - Observable: with the default setting, every `--text` turn produces byte-identical behavior to today apart from the one-time cache re-render; unit tests cover the tag table and cache-key stability/change.
+  - _Requirements: 1.1, 2.1, 2.2, 2.3, 3.2, 3.4, 4.1, 4.2, 4.4, 6.2_
+  - _Boundary: tts_
+- [ ] 2.2 Implement the local render engine behind the same seam
+  - Lazily load the local model on first render (singleton keyed by the variant setting, CPU default), mirroring the existing Whisper singleton pattern; the load happens inside the turn's normal speaking states so the UI shows activity, never a frozen window.
+  - Render with the active voice clip, write the wav into the reply cache through the shared key formula, and report render duration in the console trace (cached lines as 0).
+  - The local path performs zero network I/O; failures raise the dedicated render error and leave the backend selection untouched.
+  - Observable: with the local backend selected, a `--text` turn produces a wav in the cache with no outbound TTS traffic, and a forced failure surfaces as a reported error with the session still usable.
+  - _Requirements: 1.2, 6.1, 6.2, 6.3, 7.1, 8.2_
+  - _Depends: 2.1_
+  - _Boundary: tts_
+- [ ] 2.3 (P) Build the persona module: catalog, screening, clip cache, persistence
+  - Define the persona catalog as curated entries only: name, description, reader, source file URL, source license, trim start and duration; the bundled persona uses the shipped default clip with no fetch.
+  - Enforce the license screen twice: reject catalog entries without a permissive license at construction, and re-check the source's license metadata before any download; a mismatch marks the persona unavailable.
+  - Implement clip acquisition: download the cataloged file, decode in-process, slice the configured range, downmix and resample to 24 kHz mono with numpy, and store as one wav per persona in the persona cache; cached personas are reused without any download.
+  - Implement persona persistence: the active persona survives restarts via an atomically written state file; a missing or corrupt file falls back to the bundled persona.
+  - Implement lookup behavior: unknown names return "unknown", the roster announces active + available, and every persona works offline after its first fetch.
+  - Observable: with no network, a fresh start uses the bundled persona; after one online fetch of a catalog persona, restarts and repeated lookups perform no further downloads.
+  - _Requirements: 9.3, 9.4, 9.6, 10.1, 10.2, 10.3, 10.4_
+  - _Depends: 1.1, 1.2_
+  - _Boundary: personas_
+- [ ] 2.4 Curate the initial downloadable personas
+  - Select two additional public-domain single-reader recordings (one female, one male voice) using the same screening criteria as the shipped default: permissive license verified in the source metadata, clean single-recorder audio, a natural uncut reading segment of roughly 25 s, and per-recording direct file access.
+  - Record for each entry the exact file, trim range, reader, and license in the catalog.
+  - Verify each candidate end-to-end with the item metadata and file endpoints before adding it.
+  - Observable: both personas fetch successfully through the persona module and produce a 24 kHz mono wav in the persona cache; a deliberately wrong license entry is rejected by the screen.
+  - _Requirements: 10.1, 10.4_
+  - _Depends: 2.3_
+  - _Boundary: personas_
+- [ ] 2.5 Route persona commands in the one-turn flow
+  - Add the persona questions to the fan-out question set (action: switch/list/none; persona name: catalog names/none), excluded from the compound split like the other global questions.
+  - Apply a deterministic phrasing override first (switch phrasing, roster phrasing) with Jev answers as fallback at the normal confidence gate.
+  - On switch: resolve the name; unknown keeps the current voice and replies with the available personas; on the cloud backend, keep the voice and explain that persona switching needs the local backend.
+  - Observable: spoken "switch persona to X" and the typed equivalent both resolve in routing tests with a stubbed decision backend; unknown and cloud-backend cases keep the current voice.
+  - _Requirements: 9.1, 9.3, 9.4, 9.7_
+  - _Depends: 2.1, 2.3_
+  - _Boundary: brain routing_
+- [ ] 2.6 Add startup validation and the language gate
+  - Validate before the mic opens: backend name known; local engine importable when selected; reference clip present (or bundled default); configured clip missing → startup failure naming the file.
+  - Enforce the language gate: the local backend is accepted only for English-only configurations; any non-English configured language makes the local backend a startup error explaining that non-English replies need the cloud backend.
+  - Observable: each invalid combination (bad backend name, missing engine install, missing configured clip, non-en + local) fails at startup with a message naming the fix; the valid combinations start normally.
+  - _Requirements: 1.3, 3.3, 5.1, 5.2, 5.3_
+  - _Depends: 2.2_
+  - _Boundary: tts_
+
+- [ ] 3. Integration: wire personas into the voice and both platforms
+- [ ] 3.1 Connect persona switching to the speaking voice
+  - On a successful switch: point the TTS layer at the persona's clip (refreshing the clip identity in the cache key), persist the persona, and speak the confirmation in the new voice so the user hears the change immediately.
+  - On fetch failure: keep the current voice and say so; nothing else in the turn flow changes.
+  - A backend or clip change must invalidate only the affected cached lines (per the cache key), and switching back to a persona with a cached clip is instant.
+  - Observable: an end-to-end switch plays the confirmation in the new persona's voice, the state file records it, and a restart keeps speaking with that persona; the previous persona's cached lines still play from cache when switched back.
+  - _Requirements: 3.1, 4.2, 9.1, 9.2, 10.1, 10.2, 10.5, 10.6_
+  - _Depends: 2.2, 2.3, 2.5_
+  - _Boundary: tts, personas, brain routing (explicit integration task)_
+- [ ] 3.2 Wire both platforms
+  - In each platform entry point: apply the two persona storage path overrides next to the existing path overrides, and run the startup validation where the current key checks run.
+  - Keep platform changes to the minimum: no platform-specific TTS or persona logic.
+  - Observable: both platform entry points start with the local backend configured, and each invalid startup combination prints its named fix before the mic opens.
+  - _Requirements: 1.3, 3.3, 5.2_
+  - _Depends: 2.6_
+  - _Boundary: platform startup (win11, linux)_
+
+- [ ] 4. Validation: backend, persona, performance, end-to-end
+- [ ] 4.1 Backend and warm-cache integration tests
+  - One `--text`-style turn per backend asserting a wav lands in a temp reply cache; the cloud path asserts the moved implementation produces the same request shape as before.
+  - Warm-cache run across both backends; assert the local render performs no network I/O and cached lines return without re-render.
+  - Observable: integration tests pass on both platforms with the optional engine installed; skipped cleanly with a clear message when it is not.
+  - _Requirements: 1.1, 1.2, 4.1, 4.3, 7.1_
+  - _Depends: 3.1_
+  - _Boundary: tts, shared tests_
+- [ ] 4.2 Persona end-to-end validation
+  - Exercise the full switch flow through the turn handler: confirmation in the new voice, unknown persona keeps voice and lists, cloud backend refuses, fetch failure keeps voice, restart persistence, and second fetch performs no download.
+  - Observable: the persona test suite passes with network stubbed after the first fetch, proving offline reuse and persistence.
+  - _Requirements: 9.1, 9.2, 9.5, 9.6, 10.2, 10.3, 10.5, 10.6_
+  - _Depends: 3.1_
+  - _Boundary: personas, brain routing, shared tests_
+- [ ] 4.3* (P) Add the realtime-factor measurement harness
+  - A small script that renders a fixed set of reply-length lines with the local backend and compares wall time to audio duration, printing the per-line ratio.
+  - This is operator-run evidence for the CPU performance envelope, not a CI gate; it must work on a machine without a GPU.
+  - Observable: running the harness on the dev box prints per-line ratios with no failures; targets are checked manually per machine.
+  - _Requirements: 8.1_
+  - _Depends: 2.2_
+  - _Boundary: shared tests_
+- [ ] 4.4 Manual end-to-end gates on both platforms
+  - One `--text` turn per backend; one live question while the local backend is active proving decision/LLM traffic is unaffected by the TTS setting; one timer alert spoken with the active persona and correctly handled emotion tags; one web-remote voice turn and a mid-turn cancel.
+  - Observable: the documented gate checklist passes on win11 and linux with the local backend selected; regressions are filed before merge.
+  - _Requirements: 2.4, 6.1, 6.3, 7.2, 8.2_
+  - _Depends: 3.2_
+  - _Boundary: platform startup (win11, linux), tts, personas_
