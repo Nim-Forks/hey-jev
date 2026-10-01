@@ -17,7 +17,7 @@ import urllib.parse
 
 import requests
 
-from shared import config
+from shared import config, personas, tts
 
 
 TARGETS = ("app", "volume", "display", "media", "system", "timer")
@@ -33,7 +33,7 @@ QUESTIONS = {
     "target": {"type": "choice", "instructions": "What is the primary thing being controlled?",
                "criteria": {"app": "an application", "volume": "sound level", "display": "screen appearance or dark mode",
                             "media": "music playback", "system": "locking or sleeping the computer",
-                            "timer": "setting, checking, or cancelling a timer or reminder"}},
+                            "timer": "setting, checking, or cancelling a timer, reminder, or alert (e.g. 'alert me in ten minutes', 'remind me to…', 'in twenty minutes')"}},
     "app": {"type": "choice", "instructions": "Which app, if any, is named?",
             "criteria": {"spotify": None, "slack": None, "chrome": None, "vscode": None, "explorer": None,
                          "edge": None, "notepad": None, "terminal": None, "none": None}},
@@ -52,9 +52,11 @@ QUESTIONS = {
                        "criteria": {"dark_on": None, "dark_off": None, "toggle": None, "none": None}},
     "media_action": {"type": "choice", "instructions": "What should happen to music playback?",
                      "criteria": {"play": None, "pause": None, "next": None, "previous": None, "none": None}},
-    "timer_action": {"type": "choice", "instructions": "What should happen with a timer or reminder?",
-                     "criteria": {"set": "start a timer or set a reminder", "check": "ask how much time is left",
-                                  "cancel": "stop or cancel a timer", "none": None}},
+    "timer_action": {"type": "choice", "instructions": "What should happen with a timer, reminder or alert?",
+                     "criteria": {"set": "start a timer, set a reminder or alert, or ask to be alerted/notified after some time",
+                                  "check": "ask how much time is left",
+                                  "cancel": "stop or cancel a timer",
+                                  "none": None}},
     "system_action": {"type": "choice", "instructions": "What should happen to the computer?",
                       "criteria": {"lock": None, "sleep": None, "none": None}},
     "needs_time": {"type": "noul", "instructions": "Does answering this require knowing the current date or time?"},
@@ -74,6 +76,13 @@ QUESTIONS = {
                                    "recall": "asks what was remembered or asks for a previously stored fact",
                                    "forget": "asks to forget something",
                                    "none": "not about stored memories"}},
+    "persona_action": {"type": "choice", "instructions": "Is the user asking to switch the assistant's persona (voice character) or asking which personas exist?",
+                       "criteria": {"switch": "asks to switch or change the assistant's persona to another one",
+                                    "list": "asks which personas exist or which persona is currently active",
+                                    "none": "not about personas at all"}},
+    "persona_name": {"type": "choice", "instructions": "Which persona is named, if any?",
+                     "criteria": {**{p["name"]: p["description"] for p in personas.catalog()},
+                                  "none": "no persona is named"}},
 }
 
 
@@ -83,7 +92,7 @@ def split_questions():
     for slot, word in (("first", "FIRST"), ("second", "SECOND")):
         for k, q in QUESTIONS.items():
             if k in ("category", "compound", "needs_time", "needs_machine", "weather_action",
-                     "info_skill", "memory_action"):
+                     "info_skill", "memory_action", "persona_action", "persona_name"):
                 continue
             out[f"{slot}_{k}"] = {**q, "instructions": f"Considering ONLY the {word} action the user asks for: {q['instructions']}"}
     return out
@@ -121,6 +130,16 @@ def decide(ans, text=None):
         t = sub_action(ans, "timer")  # "how long is left?" reads like a question but it's a timer command
         if t:
             return ("actions", [t])
+        tact, tconf = ans["timer_action"]
+        if tact == "set" and tconf >= 0.5:
+            # benign + reversible (chime/spoken, cancellable): a low-confidence
+            # "set" rides Jev's confident timer target instead of clarify
+            return ("actions", [(tconf, "timer_set", None, "timer_set", {"level": None})])
+    if (not ans["compound"][0] and text
+            and ans["target"][0] == "timer" and ans["target"][1] >= 0.5):
+        tover = timer_override(text)
+        if tover:
+            return tover
     wact, wconf = ans["weather_action"]
     if wact == "fetch" and wconf >= 0.5 and cat != "unclear":
         return ("weather", None)
@@ -133,6 +152,16 @@ def decide(ans, text=None):
         return ("memory", op)
     if op == "recall":
         return ("llm", None)  # memory rides the LLM context automatically
+    pop = persona_override(text) if text else None
+    if pop is None:
+        pact, pconf = ans["persona_action"]
+        if pact == "switch" and pconf >= config.GATE:
+            pname, pnconf = ans["persona_name"]
+            pop = ("switch", pname if pnconf >= config.GATE else None)
+        elif pact == "list" and pconf >= 0.5:
+            pop = ("list", None)
+    if pop:
+        return ("persona", pop)
     skill, sconf = ans["info_skill"]
     if skill != "none" and sconf >= 0.5:
         return ("skill", skill)  # explicit skill intent wins even over an unclear category
@@ -224,6 +253,11 @@ REPLIES = {
     "memory_forgot": ["Forgotten.", "Done, wiped from memory.", "Okay, it's gone."],
     "memory_unclear": ["[clear throat] What should I remember, exactly?"],
     "memory_unsupported": ["[sighing] Memory works only from the web remote right now."],
+    "persona_switched": ["[cheerful] Persona switched to {name}. I sound a little different now."],
+    "persona_list": ["My personas: {names}. Right now I am {current}."],
+    "persona_unknown": ["I don't know that one. I can be: {names}."],
+    "persona_needs_local": ["Persona switching works with my local voice. That needs the local speech backend."],
+    "persona_unavailable": ["I couldn't fetch that persona's voice right now, so I'll stay as I am."],
 }
 
 TARGETS = ("app", "volume", "display", "media", "system", "timer")
@@ -722,6 +756,46 @@ MEM_RECALL_RE = re.compile(
     r"|\bdo\s+you\s+remember\b|\bwhat\s+have\s+(?:you\s+)?remembered\b", re.I)
 MEM_FORGET_RE = re.compile(r"\bforget\b", re.I)
 
+PERSONA_SWITCH_RE = re.compile(r"\b(?:switch|change|go)\s+(?:the\s+)?persona\s+(?:to|as)\s+([a-z]+)", re.I)
+PERSONA_SWITCH_B_RE = re.compile(r"\bswitch\s+to\s+(?:the\s+)?([a-z]+)\s+persona\b", re.I)
+PERSONA_LIST_RE = re.compile(
+    r"\b(?:what|which)\s+(?:are\s+(?:the|your)\s+)?personas?\b"
+    r"|\b(?:list|show)(?:\s+(?:the|your|me))*\s+personas?\b"
+    r"|\bpersonas?\s+(?:list|roster)\b"
+    r"|\bwhat\s+persona\s+(?:are\s+you|is\s+active|am\s+i\s+using)\b", re.I)
+
+
+def persona_override(text):
+    """Deterministic persona phrasing — exact name capture must not depend on
+    the decision backend (same rationale as memory_override)."""
+    t = (text or "").strip()
+    if PERSONA_LIST_RE.search(t):
+        return ("list", None)
+    m = PERSONA_SWITCH_RE.search(t) or PERSONA_SWITCH_B_RE.search(t)
+    if m:
+        return ("switch", m.group(1).lower())
+    return None
+
+
+def persona_reply(payload):
+    """Execute a ("switch", name) / ("list", None) persona decision and return
+    the reply line. Keeps the current voice on every failure path; the voice
+    hookup (clip identity) follows automatically via tts.active_clip()."""
+    action, name = payload
+    if action == "list":
+        return say_line("persona_list",
+                        current=personas.active(),
+                        names=", ".join(p["name"] for p in personas.list_personas()))
+    if config.TTS_BACKEND != "chatterbox":
+        return say_line("persona_needs_local")          # keep voice
+    if personas.resolve(name or "") is None:
+        return say_line("persona_unknown",
+                        names=", ".join(p["name"] for p in personas.list_personas()))
+    if personas.clip_for(name) is None:
+        return say_line("persona_unavailable")          # fetch failed: keep voice
+    personas.set_active(name)
+    return say_line("persona_switched", name=name)      # confirmation speaks in the new voice
+
 
 def memory_override(text):
     """Deterministic memory phrasing — KEV is unreliable at telling
@@ -733,6 +807,24 @@ def memory_override(text):
         return "recall"
     if MEM_FORGET_RE.search(t) and not re.search(r"\bdon'?t\s+forget\b", t, re.I):
         return "forget"
+    return None
+
+
+TIMER_NEG_RE = re.compile(r"\b(?:don'?t|do\s+not|never|no\s+need)\b[^.?!]{0,20}\b(?:remind|alert|notify|ping|timer)\b", re.I)
+TIMER_VERBS_RE = re.compile(r"\b(?:remind|alert|notify|ping)\s+me\b|\b(?:set|start)\s+(?:a|an|the)\s+timer\b", re.I)
+TIMER_STRUCT_RE = re.compile(r"\bme\b[^.?!]{0,40}?\b(?:in|after)\s+\d", re.I)
+
+
+def timer_override(text):
+    """Deterministic timer phrasing — STT often garbles the verb ('alwrt me in
+    one minute'), dropping timer_action below even the lenient gate, so the
+    structure (me ... in <duration>) routes it instead. Alarm/wake phrasing is
+    left to Jev: run_timer owns the clock-time path."""
+    t = _digits(text or "")
+    if TIMER_NEG_RE.search(t) or re.search(r"\b(?:wake me|alarm)\b", t, re.I):
+        return None
+    if TIMER_VERBS_RE.search(t) or TIMER_STRUCT_RE.search(t):
+        return ("actions", [(0.9, "timer_set", None, "timer_set", {"level": None})])
     return None
 
 
@@ -855,17 +947,7 @@ CACHE_DIR = config.CACHE_DIR
 
 def fetch_tts(text):
     """Return a wav path for this line, generating it once and caching on disk. Returns (path, ms, cached)."""
-    os.makedirs(config.CACHE_DIR, exist_ok=True)
-    path = os.path.join(config.CACHE_DIR, hashlib.sha1(f"{config.VOICE_ID}|{text}".encode()).hexdigest() + ".wav")
-    if os.path.exists(path):
-        return path, 0, True
-    t = time.time()
-    r = requests.post("https://api.fish.audio/v1/tts",
-                      headers={"Authorization": f"Bearer {config.FISH_KEY}", "model": "s2.1-pro-free"},
-                      json={"text": text, "reference_id": config.VOICE_ID, "format": "wav"}, timeout=60)
-    r.raise_for_status()
-    open(path, "wb").write(r.content)
-    return path, int((time.time() - t) * 1000), False
+    return tts.render(text)
 
 
 def play_wav_path(path):
@@ -910,7 +992,7 @@ def say(line, notify):
     print(f"  say: {line}")
     emit(notify, "Speaking", line)
     tts_ms = speak(line)
-    print(f"  fish {'cached' if tts_ms == 0 else str(tts_ms) + 'ms'}")
+    print(f"  tts {config.TTS_BACKEND} {'cached' if tts_ms == 0 else str(tts_ms) + 'ms'}")
 LEVELS = {"silent": 0, "quiet": 25, "medium": 50, "loud": 75, "max": 100}
 """chunk 10: cancel + one-turn flow"""
 
@@ -984,6 +1066,8 @@ def handle(text, stt_ms=None, notify=None):
             else:  # forget
                 sink("forget", memory_forget(text))
                 line = say_line("memory_forgot")
+        elif kind == "persona":
+            line = persona_reply(payload)
         elif kind == "skill":
             line = skill_line(payload, text)
             if line is None:  # e.g. "who wrote X" — the encyclopedia can't answer that

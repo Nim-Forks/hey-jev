@@ -4,8 +4,16 @@ Do NOT `import siri` here — the repo root's macOS siri.py would shadow the
 platform layer. The platform hooks (chime, play_wav, machine_context) are
 already wired into shared/config by the platform siri.py.
 """
+from dotenv import load_dotenv
+
 from shared import brain, config
 from shared import remote_server as rs
+
+# standalone-entry parity with siri.py: shared/config.py's dotenv walk misses
+# this platform's .env, so re-read it for settings like TTS_BACKEND
+import os
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
+config.TTS_BACKEND = os.getenv("TTS_BACKEND", config.TTS_BACKEND)
 
 
 def remote_timer_done(t, server):

@@ -3,4 +3,5 @@
 __pycache__/
 *.pyc
 timers.json
+persona.json
 cache/

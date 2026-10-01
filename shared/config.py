@@ -44,6 +44,30 @@ SERVER_KEY_LIMIT = int(os.getenv("SERVER_KEY_LIMIT", "10"))
 # paths (platform layer overrides both to its own folder)
 TIMERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "timers.json")
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "tts")
+# persona storage (platform layer overrides both to its own folder)
+PERSONAS_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "personas")
+PERSONA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "persona.json")
+
+# TTS backend switch. "fish" = cloud API (current behavior, default).
+# "chatterbox" = local open-source engine (optional install, English-only).
+TTS_BACKENDS = ("fish", "chatterbox")
+TTS_BACKEND = os.getenv("TTS_BACKEND", "fish").strip().lower()
+TTS_REF_CLIP = os.getenv("TTS_REF_CLIP", "").strip() or None  # None -> persona/bundled clip
+TTS_CHATTERBOX_VARIANT = os.getenv("TTS_CHATTERBOX_VARIANT", "nano").strip().lower()
+# Bundled default voice (public domain; swap by overwriting the file or setting TTS_REF_CLIP).
+DEFAULT_VOICE_CLIP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                  "assets", "voice-default.wav")
+
+# STT spec, shared-resolved (doc/02-risks-invariants.md #8). Previously referenced
+# by remote_server + platforms but defined only in the legacy mac layer.
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small.en")
+
+
+def _parse_languages(raw):
+    return {p.strip() for p in raw.replace(";", ",").split(",") if p.strip()}
+
+
+WHISPER_LANGUAGES = _parse_languages(os.getenv("WHISPER_LANGUAGES", "en"))
 
 # hooks the platform layer must wire (see doc/01-migration-plan.md)
 machine_context_hook = None   # () -> str

@@ -185,7 +185,7 @@ class RemoteServer:
             self._send_reply(conn, line)
             try:
                 path, ms, cached = brain.fetch_tts(line)
-                print(f"  fish {'cached' if ms == 0 else str(ms) + 'ms'}")
+                print(f"  tts {config.TTS_BACKEND} {'cached' if ms == 0 else str(ms) + 'ms'}")
                 reply["wav"] = open(path, "rb").read()
             except Exception as exc:
                 print(f"  tts failed: {exc}")

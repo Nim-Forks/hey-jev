@@ -1,0 +1,18 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+
+def test_shared_core_imports():
+    from shared import brain, config
+    assert callable(brain.fetch_tts)
+    assert config.TTS_BACKEND in config.TTS_BACKENDS
+
+
+def test_synthetic_clip_fixture(state_isolation, tmp_path):
+    from fixtures import write_syllable_wav
+    p = write_syllable_wav(str(tmp_path / "tone.wav"))
+    import soundfile as sf
+    data, sr = sf.read(p)
+    assert sr == 24000 and data.ndim == 1 and len(data) > sr * 2

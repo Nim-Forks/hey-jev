@@ -1,6 +1,5 @@
-"""Kill any running hey-jev remote server and start a fresh one.
-Usage: powershell -File restart-remote.ps1   (or: .\restart-remote.ps1)
-"""
+# Kill any running hey-jev remote server and start a fresh one.
+# Usage: powershell -File restart-remote.ps1   (or: .\restart-remote.ps1)
 $ErrorActionPreference = "Stop"
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $python = Join-Path $dir ".venv\Scripts\python.exe"
@@ -26,10 +25,10 @@ $p = Start-Process -FilePath $python `
     -PassThru -WindowStyle Hidden
 $p.Id | Set-Content $pidFile
 
-# 3. wait for /health
+# 3. wait for /health (chatterbox import is slow on cold start — allow 40s)
 $ok = $false
-foreach ($i in 1..10) {
-    Start-Sleep -Milliseconds 800
+foreach ($i in 1..40) {
+    Start-Sleep -Milliseconds 1000
     try {
         $health = Invoke-WebRequest -Uri "http://127.0.0.1:8765/health" `
             -UseBasicParsing -TimeoutSec 2
@@ -39,9 +38,10 @@ foreach ($i in 1..10) {
 
 if ($ok) {
     Write-Host "[ok] remote server running, pid $((Get-Content $pidFile))"
-    Get-Content $runLog | Select-Object -First 6
+    Get-Content $runLog -Tail 8 -ErrorAction SilentlyContinue
 } else {
-    Write-Host "[FAIL] server did not come up; stderr:"
-    Get-Content $errLog -ErrorAction SilentlyContinue | Select-Object -First 20
+    Write-Host "[FAIL] server did not come up; stderr (last 20):"
+    Get-Content $errLog -Tail 20 -ErrorAction SilentlyContinue
     exit 1
 }
+exit 0

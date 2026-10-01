@@ -14,10 +14,18 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from shared import brain, config
+from dotenv import load_dotenv
+
+from shared import brain, config, tts
 
 config.TIMERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "timers.json")
 config.CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "tts")
+config.PERSONAS_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "personas")
+config.PERSONA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "persona.json")
+# shared/config.py's dotenv walk starts at shared/ and misses this platform's
+# .env; re-read it so settings like TTS_BACKEND (read at config import) apply.
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
+config.TTS_BACKEND = os.getenv("TTS_BACKEND", config.TTS_BACKEND)
 
 
 def ps(script):
@@ -486,14 +494,21 @@ def main():
         run_app()
         return
     if args.remote:
+        problems = tts.validate_startup()
+        if problems:
+            sys.exit("\n".join(problems))
         import remote
         remote.run_remote()
         return
-    if not config.FISH_KEY:
-        sys.exit("need FISH_AUDIO_API_KEY in Credential Manager or .env")
+    if config.TTS_BACKEND == "fish" and not config.FISH_KEY:
+        sys.exit("need FISH_AUDIO_API_KEY in Credential Manager or .env "
+                 "(or set TTS_BACKEND=chatterbox for the local voice)")
     if config.decision_backend() is None:
         sys.exit("need a decision backend in Credential Manager or .env: "
                  "TYPESAFE_API_KEY, or KEV_URL + KEV_API_KEY, or OPENROUTER_API_KEY")
+    problems = tts.validate_startup()
+    if problems:
+        sys.exit("\n".join(problems))
     if args.text:
         brain.handle(args.text)
         return

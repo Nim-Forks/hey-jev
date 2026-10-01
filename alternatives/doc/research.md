@@ -104,6 +104,16 @@
   - Voice-command routing can ride the existing Jev fan-out (a persona question), or a typed/remote command; both flow through the existing command paths.
 - **Implications**: Personas become catalog entries (name → PD source + description) plus a per-persona clip cache; requirements 9–10 capture the observable behavior. Catalog curation and the fetch/screen flow belong to design.
 
+### Local backend live verification (2026-09-30, win11 dev box, Python 3.13, torch 2.6.0+cpu)
+- **Context**: First real end-to-end run of the chatterbox backend after bulk implementation.
+- **Findings**:
+  - `chatterbox-tts 0.1.7` exposes **Turbo (350M) only** — `ChatterboxTurboTTS.from_pretrained(device)` has no nano flag and the package ships no Nano class. `TTS_CHATTERBOX_VARIANT` remains a hook for a future release; both variants currently load Turbo.
+  - Two vendor CPU bugs required load-time workarounds in `tts._ensure_model` (verified necessary): the S3 conditioning path feeds a **float64 numpy wav** into a float32 mel bank (root cause: default `norm_loudness=True` runs pyloudnorm, which returns float64 and leaks into every conditioning consumer) — fixed by casting audio to float32 at the `log_mel_spectrogram` choke point and forcing float32 out of `norm_loudness`.
+  - **Real render works**: six reply-length lines rendered through the product seam; wavs verified 24 kHz mono.
+  - **RTF evidence (requirement 8.1)**: mean **3.82**, max **4.30** — **FAIL against the < 1.0 target** on this box (AMD Zen4 mobile; torch thread tuning 8/4 changed nothing beyond noise). Cause: Turbo 350M's AR token loop (~10–13 tok/s) is too heavy for the envelope; Nano (110M, the intended CPU model) is not loadable in 0.1.7.
+  - Practical impact while RTF > 1: warm-cache scripted replies stay instant (background pre-render, ~8–10 min for the full set on first run); a **new** LLM-written line waits ~8–12 s before playback. Cached lines unaffected.
+- **Implications**: The local backend is functionally complete but misses the realtime envelope with 0.1.7/Turbo. When Nano ships loadable: flip the default variant and re-run the harness (vendor claims ~3× realtime on 8 cores). Until then the Fish default stays the latency-safe choice for live answers; the switch remains correct for offline/privacy use and warm-cache-dominant usage. Re-verify on the linux box (thread counts and BLAS differ).
+
 ### Decision: keep Fish as default until the free window ends (30 Nov 2026)
 - **Context**: `s2.1-pro-free` is $0 until end of November 2026; post-paid cost with the reply cache is cents/day.
 - **Alternatives Considered**: flip default now vs. keep Fish default and merge the switch early.

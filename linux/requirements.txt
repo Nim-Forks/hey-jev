@@ -7,3 +7,6 @@ faster-whisper>=1.2
 # optional, X11 only:
 # pynput>=1.8        # push-to-talk hotkey
 # python3-tk (apt)   # status window
+
+# optional, local TTS backend (Chatterbox): Python >= 3.13 venv, install torch from
+# the CPU index first — see ../shared/requirements-tts-local.txt

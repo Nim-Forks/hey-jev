@@ -16,10 +16,19 @@ import subprocess
 import threading
 import time
 
-from shared import brain, config
+from dotenv import load_dotenv
+
+from shared import brain, config, tts
 
 config.TIMERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "timers.json")
 config.CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "tts")
+config.PERSONAS_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "personas")
+config.PERSONA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "persona.json")
+# parity with win11: re-read the platform .env (linux keeps its .env at the
+# checkout root, which shared/config.py already finds; this is a no-op there
+# unless a linux/.env exists).
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
+config.TTS_BACKEND = os.getenv("TTS_BACKEND", config.TTS_BACKEND)
 
 
 def sh(*cmd):
@@ -435,14 +444,21 @@ def main():
         run_app()
         return
     if args.remote:
+        problems = tts.validate_startup()
+        if problems:
+            sys.exit("\n".join(problems))
         import remote
         remote.run_remote()
         return
-    if not config.FISH_KEY:
-        sys.exit("need FISH_AUDIO_API_KEY in Credential Manager or .env")
+    if config.TTS_BACKEND == "fish" and not config.FISH_KEY:
+        sys.exit("need FISH_AUDIO_API_KEY in Credential Manager or .env "
+                 "(or set TTS_BACKEND=chatterbox for the local voice)")
     if config.decision_backend() is None:
         sys.exit("need a decision backend in Credential Manager or .env: "
                  "TYPESAFE_API_KEY, or KEV_URL + KEV_API_KEY, or OPENROUTER_API_KEY")
+    problems = tts.validate_startup()
+    if problems:
+        sys.exit("\n".join(problems))
     if args.text:
         brain.handle(args.text)
         return

@@ -1,0 +1,15 @@
+# Optional local TTS engine for hey-jev (Chatterbox, MIT).
+# NOT installed by the platform requirements; opt in with:
+#   pip install -r requirements.txt -r ../shared/requirements-tts-local.txt
+#
+# Constraints (verified against chatterbox-tts 0.1.7 metadata, 2026-09-30):
+# 1. Python >= 3.13 required: older interpreters pin numpy<2.0 which conflicts
+#    with the platforms' numpy>=2.0. On >= 3.14 the vendor pins torch>=2.9.
+# 2. Install torch from the CPU index FIRST (PyPI's same-version CUDA wheel
+#    would otherwise win):
+#      pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+#    (adjust the pin to the vendor's requirement for your interpreter version)
+# 3. First import/render downloads model weights (Nano ~ small, Turbo larger).
+--extra-index-url https://download.pytorch.org/whl/cpu
+chatterbox-tts>=0.1.7
+soundfile>=0.13

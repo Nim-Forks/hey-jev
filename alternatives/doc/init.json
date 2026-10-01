@@ -3,15 +3,25 @@
   "feature_name": "tts-alternatives",
   "branch": "feature-alternatives",
   "created_at": "2026-09-30T18:46:00Z",
-  "updated_at": "2026-09-30T20:23:30Z",
+  "updated_at": "2026-09-30T20:55:00Z",
   "language": "en",
-  "phase": "tasks",
+  "phase": "implementation",
   "summary": "Replace the Fish Audio cloud TTS with a selectable open-source backend (Chatterbox) behind a config.TTS_BACKEND switch; Fish stays the default until its free window ends 30 Nov 2026.",
   "files_changed": [
     "requirements.md",
     "research.md",
     "design.md",
-    "tasks.md"
+    "tasks.md",
+    "shared/config.py",
+    "shared/tts.py",
+    "shared/personas.py",
+    "shared/brain.py",
+    "win11/siri.py",
+    "linux/siri.py",
+    "assets/voice-default.wav",
+    "shared/tests/*",
+    "shared/requirements-tts-local.txt",
+    "shared/requirements-dev.txt"
   ],
   "approvals": {
     "requirements": {
