@@ -95,6 +95,7 @@ DEF_FRONT=$(load_env_default REMOTE_FRONT)
 DEF_PORT=$(load_env_default REMOTE_PORT)
 DEF_HOST=$(load_env_default REMOTE_HOST)
 DEF_TOKEN=$(load_env_default REMOTE_TOKEN)
+DEF_TOKS=$(load_env_default REMOTE_TOKENS)
 DEF_SKL=$(load_env_default SERVER_KEY_LIMIT)
 DEF_NTFY=$(load_env_default NTFY_URL)
 DEF_ALERT=$(load_env_default ALERT_MESSAGE)
@@ -110,6 +111,7 @@ FRONT=$(ask "REMOTE_FRONT (none | npm | tunnel)" "${DEF_FRONT:-tunnel}")
 PORT=$(ask "REMOTE_PORT" "${DEF_PORT:-8765}")
 RHOST=$(ask "REMOTE_HOST (127.0.0.1 = tunnel/local only)" "${DEF_HOST:-127.0.0.1}")
 RTOK=$(ask_secret "REMOTE_TOKEN (gate for web clients)" "$DEF_TOKEN")
+TOKS=$(ask "REMOTE_TOKENS (extra per-device tokens, comma-separated, empty = none)" "$DEF_TOKS")
 SKL=$(ask "SERVER_KEY_LIMIT (free server-key turns per device)" "${DEF_SKL:-10}")
 NTFY=$(ask "NTFY_URL (https://ntfy.sh/<topic>, empty = no push)" "$DEF_NTFY")
 ALERT=$(ask "ALERT_MESSAGE (default alert for label-less timers)" "$DEF_ALERT")
@@ -127,6 +129,7 @@ REMOTE_FRONT=$FRONT
 REMOTE_PORT=$PORT
 REMOTE_HOST=$RHOST
 REMOTE_TOKEN=$RTOK
+REMOTE_TOKENS=$TOKS
 SERVER_KEY_LIMIT=$SKL
 NTFY_URL=$NTFY
 ALERT_MESSAGE=$ALERT

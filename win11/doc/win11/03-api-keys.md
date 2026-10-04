@@ -38,6 +38,7 @@ The LLM gets context only when Jev's fan-out says it's needed (`needs_time`,
 | `REMOTE_PORT` | `8765` | local bind port (NPM forwards to it; enable **Websockets Support** + DNS-01 cert in NPM) |
 | `REMOTE_HOST` | `0.0.0.0` | bind address (`127.0.0.1` = PC-only, behind NPM/tunnel) |
 | `REMOTE_TOKEN` | empty | shared secret; if set, web clients need it (Settings page) or their own keys |
+| `REMOTE_TOKENS` | empty | extra tokens, comma-separated — one per device; revoke a device by deleting its token and restarting |
 | `SERVER_KEY_LIMIT` | `10` | free turns when the client uses the server's Fish key (counted client-side in localStorage; turns with the client's own key don't count) |
 
 Per-user keys + memory + ntfy topic live in each browser's localStorage

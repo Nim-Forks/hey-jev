@@ -10,6 +10,14 @@ def test_shared_core_imports():
     assert config.TTS_BACKEND in config.TTS_BACKENDS
 
 
+def test_multi_token_gate():
+    from shared.remote_server import RemoteServer
+    s = RemoteServer(0, "127.0.0.1", "none", ["tok-a", "tok-b"])
+    assert s.token_ok("tok-a") and s.token_ok("tok-b")
+    assert not s.token_ok("tok-c") and not s.token_ok(None)
+    assert RemoteServer(0, "127.0.0.1", "none", []).token_ok("anything")  # empty = gate off
+
+
 def test_synthetic_clip_fixture(state_isolation, tmp_path):
     from fixtures import write_syllable_wav
     p = write_syllable_wav(str(tmp_path / "tone.wav"))

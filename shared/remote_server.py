@@ -86,11 +86,15 @@ class WsConn:
 
 
 class RemoteServer:
-    def __init__(self, port, host, front, token):
-        self.port, self.host, self.front, self.token = port, host, front, token
+    def __init__(self, port, host, front, tokens):
+        self.port, self.host, self.front = port, host, front
+        self.tokens = frozenset(tokens)   # any of these authenticates; drop one in .env to revoke it
         self.sessions = {}
         self.turn_lock = threading.Lock()
         self.web_clients = set()
+
+    def token_ok(self, token):
+        return not self.tokens or (token in self.tokens)
 
     def broadcast_web(self, msg):
         for conn in list(self.web_clients):
@@ -326,7 +330,7 @@ class RemoteServer:
             return
         keys = self._clean_keys(payload.get("keys"))
         token = payload.get("token")
-        if not keys and (self.token and token != self.token):
+        if not keys and not self.token_ok(token):
             http_send(handler, 200, b'{"ok":false,"detail":"bad token"}', "application/json")
             return
         sentinel = _Sentinel()
@@ -342,7 +346,7 @@ class RemoteServer:
 
     def _turn_http(self, handler, body):
         auth = handler.headers.get("Authorization", "")
-        if self.token and auth != f"Bearer {self.token}":
+        if not self.token_ok(auth[7:].strip() if auth.startswith("Bearer ") else None):
             http_send(handler, 401, b"need Authorization: Bearer <token>", "text/plain")
             return
         keys = {}
@@ -404,7 +408,7 @@ def ws_loop(server, sock, addr):
                         uses = max(0, int(msg.get("uses", 0)))
                     except (TypeError, ValueError):
                         uses = 0
-                    ok = (not server.token) or token == server.token or keys
+                    ok = server.token_ok(token) or bool(keys)
                     ntfy = str(msg.get("ntfy") or "").strip()
                     server.sessions[conn] = {"keys": keys if ok else {}, "memory": memory,
                                              "uses": min(uses, SERVER_KEY_LIMIT), "ntfy": ntfy}
@@ -624,9 +628,9 @@ def serve():
     port = int(os.getenv("REMOTE_PORT", "8765"))
     host = os.getenv("REMOTE_HOST", "0.0.0.0") or "0.0.0.0"
     front = os.getenv("REMOTE_FRONT", "none").strip().lower() or "none"
-    token = os.getenv("REMOTE_TOKEN", "").strip()
+    tokens = [t.strip() for t in (os.getenv("REMOTE_TOKEN", "") + "," + os.getenv("REMOTE_TOKENS", "")).split(",") if t.strip()]
     scheme = {"npm": "https", "coolify": "https", "tunnel": "https"}.get(front, "http")
-    server = RemoteServer(port, host, front, token)
+    server = RemoteServer(port, host, front, tokens)
     _server = server
 
     def remote_timer_done(t):
@@ -663,8 +667,10 @@ def serve():
         print(f"[remote] open {scheme}://<your-front-host>/  (proxied to this port)")
     else:
         print(f"[remote] open http://<this-pc-ip>:{port}/  on a phone browser")
-    if not token:
+    if not server.tokens:
         print("[remote] REMOTE_TOKEN is empty — anyone on the network can use this")
+    else:
+        print(f"[remote] {len(server.tokens)} access token(s) active")
     QuietHTTPServer.allow_reuse_address = True
     httpd = QuietHTTPServer((host, port), server._make_handler())
     print(f"[remote] serving on http://{host}:{port} (front: {front})")
