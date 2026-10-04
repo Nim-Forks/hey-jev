@@ -32,6 +32,19 @@ def test_kev_model_env(monkeypatch):
         assert model == "jev-latest"
 
 
+def test_questions_anarkali_compatible():
+    # anarkali rejects choice options with empty descriptions and noul
+    # questions whose criteria is an explicit empty dict
+    from shared import brain
+    for qid, q in brain.QUESTIONS.items():
+        crit = q.get("criteria")
+        if q["type"] == "choice":
+            for opt, desc in crit.items():
+                assert isinstance(desc, str) and desc.strip(), f"{qid}/{opt} empty description"
+        elif q["type"] == "noul":
+            assert crit != {}, f"{qid} has explicit empty noul criteria"
+
+
 def test_synthetic_clip_fixture(state_isolation, tmp_path):
     from fixtures import write_syllable_wav
     p = write_syllable_wav(str(tmp_path / "tone.wav"))
