@@ -89,7 +89,9 @@ def reload_keys():
 def decision_backend():
     """(url, key, model, name) for the active decision backend, or None."""
     if USE_KEV:
-        return f"{KEV_URL}/v1/systemone", KEV_KEY, "jev-latest", "kev"
+        # KEV_MODEL lets a KEV-compatible backend (Liquid d1, a self-hosted
+        # systemone server) pick its own model id; hosted KEV uses jev-latest.
+        return f"{KEV_URL}/v1/systemone", KEV_KEY, os.getenv("KEV_MODEL", "jev-latest").strip() or "jev-latest", "kev"
     if TS_KEY:
         return "https://api.typesafe.ai/v1/systemone", TS_KEY, "jev-latest", "typesafe"
     if OR_KEY:

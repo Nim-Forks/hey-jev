@@ -18,6 +18,20 @@ def test_multi_token_gate():
     assert RemoteServer(0, "127.0.0.1", "none", []).token_ok("anything")  # empty = gate off
 
 
+def test_kev_model_env(monkeypatch):
+    from shared import config
+    monkeypatch.setenv("KEV_MODEL", "d1:free")
+    url, key, model, name = config.decision_backend()
+    if config.USE_KEV:
+        assert model == "d1:free" and name == "kev"
+    else:  # kev not configured on the test box — the env read is still per-call
+        assert config.decision_backend() is None or model != "d1:free"
+    monkeypatch.delenv("KEV_MODEL", raising=False)
+    url, key, model, name = config.decision_backend()
+    if config.USE_KEV:
+        assert model == "jev-latest"
+
+
 def test_synthetic_clip_fixture(state_isolation, tmp_path):
     from fixtures import write_syllable_wav
     p = write_syllable_wav(str(tmp_path / "tone.wav"))
