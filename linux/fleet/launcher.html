@@ -106,7 +106,7 @@ function render(url) {
     ["Decision", `${inst.decision} · ~${(inst.decisionMs / 1000).toFixed(1)} s fan-out`],
     ["Voice", inst.voice],
     ["Personas", inst.personas ? "supported" : "not on this voice"],
-    ["Croatian", inst.hr ? "supported" : "text-only English"],
+    ["Languages", inst.hr ? "English + international" : "English only"],
     ["Full turn", inst.turn],
     ["Price", `$${inst.price}/decision · $${inst.price1k}/1k turns`],
     ["URL", inst.url],

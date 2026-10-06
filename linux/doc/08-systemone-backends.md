@@ -192,8 +192,8 @@ Findings:
   journals, and require (a) parser parity, (b) agreement-rate on a labeled
   set, (c) no wrong-but-confident regressions at gate 0.45, before making a
   candidate the primary.
-- **Croatian caveat:** self-hosted candidates are English-only. Croatian
-  turns (prod `en,hr`) produce Croatian decision text — keep hr instances on
+- **International caveat:** self-hosted candidates are English-only. International
+  turns (prod `en,hr`) produce non-English decision text — keep hr instances on
   hosted backends until Laya's mmBERT router is validated on hr.
 
 ## Later code changes (explicitly NOT yet)

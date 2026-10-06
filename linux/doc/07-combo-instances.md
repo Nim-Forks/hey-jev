@@ -127,5 +127,5 @@ own retraining, not a wire fix.
 - Restart one: `sudo systemctl restart hey-jev-<name>`
 - Test `*-local` combos sequentially — three Chatterbox models resident would
   need ~6 GB on top of everything else (box has 11 GiB).
-- Croatian stays on prod (`hey-jev.nimes.in`, `en,hr`, fish) — no combo
+- International language (en + hr) stays on prod (`hey-jev.nimes.in`, fish) — no combo
   instance speaks it while Chatterbox 0.1.7 is en-only.
