@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hey-jev changelog</title>
+<style>
+:root { color-scheme: dark; }
+body { font: 13px/1.7 ui-monospace, Consolas, monospace; background:#0b0e14; color:#c8d1e0; max-width:760px; margin:40px auto; padding:0 16px; }
+h1 { color:#8ab4ff; font-size:17px; letter-spacing:2px; }
+a { color:#6fa8ff; }
+nav { margin-bottom:24px; font-size:12px; }
+.row { padding:7px 0; border-bottom:1px solid #16202e; display:flex; gap:10px; }
+.hash { color:#6fe3a1; min-width:70px; }
+.date { color:#5c6a7e; min-width:88px; }
+.muted { color:#5c6a7e; font-size:11px; }
+</style>
+</head>
+<body>
+<nav><a href="/">Fleet</a> · <a href="/tokens.html">Tokens</a> · <a href="/docs/09-instance-inventory.html">Docs</a> · <a href="/personas.html">Personas</a> · <b>Changelog</b> · <a href="/qr.html">QR</a></nav>
+<h1>CHANGELOG</h1>
+<div id="list"></div>
+<div class="muted">Last 40 commits of the prod checkout (release branch), rendered at site build time.</div>
+<script>
+(async () => {
+  try {
+    for (const c of await (await fetch("changelog.json")).json()) {
+      list.insertAdjacentHTML("beforeend",
+        `<div class="row"><span class="hash">${c.hash}</span><span class="date">${c.date}</span><span>${c.subject}</span></div>`);
+    }
+  } catch (e) { list.textContent = "changelog.json failed to load"; }
+})();
+</script>
+</body>
+</html>

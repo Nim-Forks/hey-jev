@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hey-jev tokens</title>
+<style>
+:root { color-scheme: dark; }
+body { font: 14px/1.65 ui-monospace, Consolas, monospace; background:#0b0e14; color:#c8d1e0; max-width:720px; margin:40px auto; padding:0 16px; }
+h1 { color:#8ab4ff; font-size:17px; letter-spacing:2px; }
+a { color:#6fa8ff; }
+nav { margin-bottom:24px; font-size:12px; }
+.card { background:#131822; border:1px solid #223048; border-radius:10px; padding:16px 18px; margin:14px 0; }
+.tok { color:#6fe3a1; font-weight:700; }
+.danger { color:#f0b455; border-color:#6b5426; }
+.muted { color:#5c6a7e; font-size:12px; }
+</style>
+</head>
+<body>
+<nav><a href="/">Fleet</a> · <b>Tokens</b> · <a href="/docs/09-instance-inventory.html">Docs</a> · <a href="/personas.html">Personas</a> · <a href="/changelog.html">Changelog</a> · <a href="/qr.html">QR</a></nav>
+<h1>ACCESS TOKENS</h1>
+<div class="card">
+  <span class="tok">deva</span> — works on <b>all 21 instances</b>. Each subdomain stores it once in localStorage; enter it at the token prompt on first visit.
+</div>
+<div class="card">
+  <span class="tok">the shared primary token</span> — also valid everywhere (the fleet shares one .env base + <code>REMOTE_TOKENS=deva</code> extra). Heading to a new instance? Either token connects; tokens do not transfer automatically.
+</div>
+<div class="card danger">
+  <b>Never paste backend credentials into an instance token prompt.</b>
+  Cloudflare (<code>cfut_…</code>), Liquid (<code>liquid_…</code>), System One (<code>so_live_…</code>), KEV/OpenRouter keys are
+  server-side credentials for decision/voice backends — they belong in the instance's <code>.env</code> on the
+  geekom or in <code>~/bin/.env.ai</code> on K12, never in the browser. Entering them at the token prompt only fails auth.
+</div>
+<div class="muted">Effective gate thresholds (per instance class): KEV-class deployments 0.45 · OpenRouter-only 0.65 · see <a href="/docs/09-instance-inventory.html">inventory</a>.</div>
+</body>
+</html>

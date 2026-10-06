@@ -47,8 +47,17 @@ button:hover { background: #3a6ee8; }
 </head>
 <body>
 <main>
+  <nav style="margin-bottom:14px;font-size:12px;">
+    <b style="color:#8ab4ff;">Fleet</b> ·
+    <a href="/tokens.html" style="color:#6fa8ff;">Tokens</a> ·
+    <a href="/docs/09-instance-inventory.html" style="color:#6fa8ff;">Docs</a> ·
+    <a href="/personas.html" style="color:#6fa8ff;">Personas</a> ·
+    <a href="/changelog.html" style="color:#6fa8ff;">Changelog</a> ·
+    <a href="/qr.html" style="color:#6fa8ff;">QR</a>
+  </nav>
   <h1>HEY-JEV FLEET</h1>
   <div class="sub">pick an instance, check its sheet, jump to it</div>
+  <div id="healthstrip" style="font-size:11px;color:#5c6a7e;margin:-14px 0 18px;">checking fleet health…</div>
   <select id="pick"></select>
   <div class="card hidden" id="card">
     <div class="title"><span id="iname"></span><span class="score" id="iscore"></span><span class="badge" id="ibadge"></span></div>
@@ -110,6 +119,17 @@ $("useit").addEventListener("click", () => {
   const url = $("pick").value || (DATA[0] && DATA[0].url);
   if (url) window.location.href = url;
 });
+
+async function healthStrip() {
+  try {
+    const j = await (await fetch("/api/health", { cache: "no-store" })).json();
+    const dots = j.results.map((r) =>
+      `<span title="${r.name} ${r.up ? "up" : "down"} (${r.ms}ms)" style="cursor:help;">${r.up ? "●" : "○"}</span>`).join(" ");
+    healthstrip.innerHTML = `<b style="color:${j.up === j.total ? "#6fe3a1" : "#f0b455"};">${j.up}/${j.total} up</b> &nbsp;${dots}`;
+  } catch { healthstrip.textContent = "health strip unavailable"; }
+}
+healthStrip();
+setInterval(healthStrip, 30000);
 
 boot().catch(() => { $("irows").innerHTML = ""; $("inote").textContent = "instances.json failed to load"; });
 </script>

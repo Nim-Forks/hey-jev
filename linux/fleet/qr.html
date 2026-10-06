@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hey-jev QR grid</title>
+<style>
+:root { color-scheme: dark; }
+body { font: 13px/1.6 ui-monospace, Consolas, monospace; background:#0b0e14; color:#c8d1e0; max-width:900px; margin:40px auto; padding:0 16px; }
+h1 { color:#8ab4ff; font-size:17px; letter-spacing:2px; }
+nav { margin-bottom:24px; font-size:12px; }
+nav a { color:#6fa8ff; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:14px; }
+.tile { background:#131822; border:1px solid #223048; border-radius:10px; padding:10px; text-align:center; }
+.tile svg { width:100%; height:auto; display:block; background:#fff; border-radius:6px; }
+.tile .n { color:#6fe3a1; font-size:12px; margin-top:6px; }
+.tile .u { color:#5c6a7e; font-size:9px; word-break:break-all; }
+</style>
+</head>
+<body>
+<nav><a href="/">Fleet</a> · <a href="/tokens.html">Tokens</a> · <a href="/docs/09-instance-inventory.html">Docs</a> · <a href="/personas.html">Personas</a> · <a href="/changelog.html">Changelog</a> · <b>QR</b></nav>
+<h1>SCAN-TO-OPEN</h1>
+<div class="grid" id="grid"></div>
+<script>
+(async () => {
+  try {
+    for (const inst of (await (await fetch("instances.json")).json()).instances) {
+      grid.insertAdjacentHTML("beforeend",
+        `<div class="tile"><img src="qr/${inst.name}.svg"><div class="n">${inst.name}</div><div class="u">${inst.url}</div></div>`);
+    }
+  } catch (e) { grid.textContent = "instances.json failed to load"; }
+})();
+</script>
+</body>
+</html>

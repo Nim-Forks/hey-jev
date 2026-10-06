@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hey-jev personas</title>
+<style>
+:root { color-scheme: dark; }
+body { font: 14px/1.7 ui-monospace, Consolas, monospace; background:#0b0e14; color:#c8d1e0; max-width:760px; margin:40px auto; padding:0 16px; }
+h1 { color:#8ab4ff; font-size:17px; letter-spacing:2px; }
+a { color:#6fa8ff; }
+nav { margin-bottom:24px; font-size:12px; }
+.card { background:#131822; border:1px solid #223048; border-radius:10px; padding:16px 18px; margin:14px 0; }
+.name { color:#6fe3a1; font-size:16px; font-weight:700; }
+.reader { color:#8b98ab; font-size:12px; margin-top:2px; }
+.rows { margin-top:10px; line-height:1.9; }
+.rows b { color:#5c6a7e; font-size:10px; letter-spacing:1px; text-transform:uppercase; margin-right:8px; }
+audio { width:100%; margin-top:10px; }
+.muted { color:#5c6a7e; font-size:11px; }
+</style>
+</head>
+<body>
+<nav><a href="/">Fleet</a> · <a href="/tokens.html">Tokens</a> · <a href="/docs/09-instance-inventory.html">Docs</a> · <b>Personas</b> · <a href="/changelog.html">Changelog</a> · <a href="/qr.html">QR</a></nav>
+<h1>PERSONAS</h1>
+<div id="list"></div>
+<div class="muted">Curated LibriVox readers, public domain only — licenses checked at construction; fetches never touch user-supplied URLs. Voice identity = the persona's reference clip, cached per backend per line.</div>
+<script>
+(async () => {
+  try {
+    for (const p of await (await fetch("personas.json")).json()) {
+      const d = document.createElement("div");
+      d.className = "card";
+      const src = p.source_url
+        ? `<div><b>source</b><a href="${p.source_url}">${p.source_url.split("/download/")[1] || p.source_url}</a></div>
+           <audio controls preload="none" src="${p.source_url}#t=${p.start_s},${p.start_s + p.duration_s}"></audio>`
+        : `<div><b>source</b><span>bundled default clip in the repo</span></div>`;
+      d.innerHTML = `<div class="name">${p.name}</div><div class="reader">${p.description} · read by ${p.reader}</div>
+        <div class="rows"><div><b>license</b><span>${p.source_license}</span></div>
+        <div><b>clip</b><span>audio ${p.duration_s ? p.duration_s + " s @ 24 kHz" : "default"}</span></div>${src}</div>`;
+      list.appendChild(d);
+    }
+  } catch (e) { list.textContent = "personas.json failed to load"; }
+})();
+</script>
+</body>
+</html>
