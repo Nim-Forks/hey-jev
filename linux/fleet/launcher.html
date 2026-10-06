@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hey-jev fleet</title>
+<style>
+:root { color-scheme: dark; }
+* { box-sizing: border-box; margin: 0; }
+body {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  background: #0b0e14; color: #c8d1e0; min-height: 100vh;
+  display: flex; justify-content: center; padding: 32px 16px;
+}
+main { width: min(620px, 100%); }
+h1 { font-size: 17px; letter-spacing: 2px; color: #8ab4ff; margin-bottom: 4px; }
+.sub { color: #5c6a7e; font-size: 12px; margin-bottom: 22px; }
+select {
+  width: 100%; padding: 10px 12px; font: inherit; font-size: 14px;
+  background: #131822; color: #e6edf5; border: 1px solid #2a3444; border-radius: 8px;
+}
+.card {
+  margin-top: 16px; padding: 16px 18px; background: #131822;
+  border: 1px solid #223048; border-radius: 10px;
+}
+.card.hidden { display: none; }
+.title { font-size: 15px; color: #e6edf5; display: flex; align-items: baseline; gap: 10px; }
+.title .score { font-size: 22px; color: #6fe3a1; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; border: 1px solid; }
+.badge.ok { color: #6fe3a1; border-color: #2e5c43; }
+.badge.weak { color: #f0b455; border-color: #6b5426; }
+.rows { margin-top: 12px; font-size: 13px; line-height: 1.9; }
+.rows div { display: flex; gap: 8px; }
+.rows b { color: #5c6a7e; min-width: 130px; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; padding-top: 3px; }
+.rows span { color: #c8d1e0; }
+.note { margin-top: 10px; color: #8b98ab; font-size: 12px; line-height: 1.5; border-top: 1px solid #223048; padding-top: 10px; }
+.bar { height: 6px; background: #1b2331; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, #4a6cf7, #6fe3a1); }
+nav { margin-top: 18px; display: flex; gap: 10px; }
+button {
+  flex: 1; padding: 12px; font: inherit; font-size: 14px; font-weight: 600;
+  background: #2f5fd8; color: #fff; border: 0; border-radius: 8px; cursor: pointer;
+}
+button:hover { background: #3a6ee8; }
+.hint { color: #5c6a7e; font-size: 11px; margin-top: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<main>
+  <h1>HEY-JEV FLEET</h1>
+  <div class="sub">pick an instance, check its sheet, jump to it</div>
+  <select id="pick"></select>
+  <div class="card hidden" id="card">
+    <div class="title"><span id="iname"></span><span class="score" id="iscore"></span><span class="badge" id="ibadge"></span></div>
+    <div class="bar"><i id="ibar"></i></div>
+    <div class="rows" id="irows"></div>
+    <div class="note" id="inote"></div>
+  </div>
+  <nav>
+    <button id="useit" disabled>Use it</button>
+  </nav>
+  <div class="hint">
+    Each instance keeps its access token per subdomain — enter it once
+    (deva or the instance token) on first visit, the browser remembers.
+    Decision latencies: 15-question System One fan-out, geekom-measured.
+    Prices: per decision / per 1,000 decisions.
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let DATA = [];
+
+async function boot() {
+  const j = await (await fetch("instances.json", { cache: "no-store" })).json();
+  DATA = j.instances;
+  const sel = $("pick");
+  for (const inst of DATA) {
+    const opt = document.createElement("option");
+    opt.value = inst.url;
+    opt.textContent = `${inst.name} — ${inst.decision} + ${inst.voice} (${inst.turn})`;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener("change", () => render(sel.value));
+  if (DATA.length) { sel.value = DATA[0].url; render(DATA[0].url); }
+}
+
+function render(url) {
+  const inst = DATA.find((d) => d.url === url) || DATA[0];
+  $("card").classList.remove("hidden");
+  $("iname").textContent = inst.name;
+  $("iscore").textContent = String(inst.score);
+  $("ibar").style.width = `${Math.round(inst.score * 10)}%`;
+  const badge = $("ibadge");
+  badge.textContent = inst.status;
+  badge.className = "badge " + (inst.status === "ok" ? "ok" : "weak");
+  $("irows").innerHTML = [
+    ["Decision", `${inst.decision} · ~${(inst.decisionMs / 1000).toFixed(1)} s fan-out`],
+    ["Voice", inst.voice],
+    ["Personas", inst.personas ? "supported" : "not on this voice"],
+    ["Croatian", inst.hr ? "supported" : "text-only English"],
+    ["Full turn", inst.turn],
+    ["Price", `$${inst.price}/decision · $${inst.price1k}/1k turns`],
+    ["URL", inst.url],
+  ].map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join("");
+  $("inote").textContent = inst.note || "";
+  $("useit").disabled = false;
+}
+
+$("useit").addEventListener("click", () => {
+  const url = $("pick").value || (DATA[0] && DATA[0].url);
+  if (url) window.location.href = url;
+});
+
+boot().catch(() => { $("irows").innerHTML = ""; $("inote").textContent = "instances.json failed to load"; });
+</script>
+</body>
+</html>
