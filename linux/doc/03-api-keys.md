@@ -15,7 +15,8 @@ Identical variable names to the Windows port — reference:
 
 Everything else (decision backends, `LLM_MODEL`, `LLM_MAX_TOKENS`,
 `JEV_GATE`, Fish key) is identical — copy `win11/.env` and adjust the
-`REMOTE_*` lines.
+`REMOTE_*` lines. `KEV_MODEL` picks the model id sent to a KEV-compatible
+endpoint (defaults `jev-latest`; e.g. `d1:free` for Liquid).
 
 ## Keys panel
 

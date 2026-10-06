@@ -9,6 +9,7 @@ service `com.heyjev.win`). Template: `Copy-Item .env.example .env`.
 | Key | Priority | Notes |
 | --- | --- | --- |
 | `KEV_URL` + `KEV_API_KEY` | 1 (if both set) | your KEV deployment, `/v1/systemone`, model `jev-latest` (aliased) |
+| `KEV_MODEL` | `jev-latest` | model id sent to the KEV-compatible endpoint — e.g. `d1:free` for Liquid (`KEV_URL=https://api.liquid.ai/decisions`) |
 | `TYPESAFE_API_KEY` | 2 | Typesafe cloud Jev |
 | `OPENROUTER_API_KEY` | 3 | OpenRouter's decisions API (`https://openrouter.ai/api/alpha/decisions`, model `typesafe/jev-1.13`) — also required for LLM answers in any mode |
 
