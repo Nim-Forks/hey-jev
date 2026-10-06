@@ -3,7 +3,7 @@
 Sixteen combo instances on the geekom: six from the first wave (hosted
 backends, built 2026-10-04 on release `900e206`) and ten from the second
 (systemone wave, `f8da21e` — see the Second wave section below). Stress and
-smoke numbers below were gathered with the `deva` token (2.1 s spoken
+smoke numbers below were gathered with the fleet access token (2.1 s spoken
 "set a timer for five minutes" → 4 turns each: set, cancel, set, cancel).
 
 ## Ranking (measured)
@@ -73,7 +73,7 @@ the drop-in faster variant — not deployed yet.
 
 Ten more instances, one per new decision backend × voice, pointing their
 decision side at the on-demand gate (`http://127.0.0.1:8900/<name>`, see
-`08-systemone-backends.md`). All en-only, `deva` token, base `.env` from prod.
+`08-systemone-backends.md`). All en-only, the shared access token, base `.env` from prod.
 
 | instance | URL | port | decision | voice | gate | note |
 |---|---|---|---|---|---|---|
@@ -110,7 +110,7 @@ own retraining, not a wire fix.
   Per-instance `.env` = prod's base with overrides.
 - Ports / combos / gate: 8767 kev-fish (0.45), 8768 kev-local (0.45),
   8769 jev-fish (0.65), 8770 jev-local (0.65), 8771 or-fish (0.65),
-  8772 or-local (0.65). All en-only (`WHISPER_LANGUAGES=en`), `deva` token
+  8772 or-local (0.65). All en-only (`WHISPER_LANGUAGES=en`), shared access token
   active, same NTFY/keys as prod.
 - Units: `hey-jev-<name>.service` (system), ExecStart = prod venv
   (`remote.py`), WorkingDirectory = `~/combo/<name>/linux`.

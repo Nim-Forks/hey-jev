@@ -2,7 +2,7 @@
 
 2026-10-06 · 21 running instances on 2 machines · all speaking the same
 voice assistant stack (Whisper STT → System One decisions → LLM answers →
-Fish/Chatterbox TTS) · public token: `deva`.
+Fish/Chatterbox TTS) · access token available on request.
 
 ## Instances
 
