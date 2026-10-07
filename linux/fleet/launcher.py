@@ -48,6 +48,9 @@ def _requests():
         return []
 
 
+app = FastAPI(title="hey-jev fleet launcher")
+
+
 @app.get("/api/persona/requests")
 async def persona_requests():
     return {"requests": _requests()}
