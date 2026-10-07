@@ -71,10 +71,35 @@ button:hover { background:#3a6ee8; }
   async function loadProposals() {
     try {
       const j = await (await fetch("/api/persona/requests", { cache: "no-store" })).json();
-      plist.innerHTML = j.requests.filter(q => q.status !== "adopted").map(q =>
-        `<div class="prop"><span class="n">${q.name}</span><span>by ${q.reader}</span>
-         <span class="muted">${q.source_url.split("/download/")[1] || ""}</span></div>`).join("")
-        || `<span class="muted">no open proposals</span>`;
+      const open = j.requests.filter(q => q.status === "proposed");
+      if (!open.length) { plist.innerHTML = `<span class="muted">no open proposals</span>`; return; }
+      plist.innerHTML = "";
+      for (const q of open) {
+        const row = document.createElement("div");
+        row.className = "prop";
+        row.innerHTML = `<span class="n">${q.name}</span><span>by ${q.reader}</span>
+          <span class="muted">${q.source_url.split("/download/")[1] || ""}</span>`;
+        const btn = document.createElement("button");
+        btn.type = "button"; btn.textContent = "Adopt"; btn.style.padding = "4px 10px"; btn.style.fontSize = "11px";
+        btn.addEventListener("click", async () => {
+          const tok = prompt("access token:");
+          if (!tok) return;
+          btn.disabled = true; btn.textContent = "…";
+          try {
+            const r = await fetch("/api/persona/adopt", {
+              method: "POST",
+              headers: { "Authorization": "Bearer " + tok, "Content-Type": "application/json" },
+              body: JSON.stringify({ name: q.name }),
+            });
+            const x = await r.json();
+            pfmsg.textContent = x.ok ? `${q.name} adopted — available on all instances now` :
+              "adopt failed: " + (x.error || ("HTTP " + r.status));
+          } catch (e) { pfmsg.textContent = "adopt failed: " + e; }
+          loadProposals();
+        });
+        row.appendChild(btn);
+        plist.appendChild(row);
+      }
     } catch { plist.textContent = "proposals unavailable"; }
   }
   loadProposals();
