@@ -112,7 +112,8 @@ async def persona_propose(request: Request):
 async def persona_adopt(request: Request):
     """Admin action (same access token): move a proposed persona into the
     master catalog and fan the file out to every checkout root on this box.
-    Instances read the catalog at call time — no restart needed."""    if not _authed(request):
+    Instances read the catalog at call time — no restart needed."""
+    if not _authed(request):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     try:
         body = json.loads(await request.body())
