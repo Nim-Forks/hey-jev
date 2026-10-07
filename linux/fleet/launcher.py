@@ -10,7 +10,7 @@ import threading
 import time
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
@@ -57,7 +57,7 @@ async def persona_requests():
 
 
 @app.post("/api/persona/propose")
-async def persona_propose(request):
+async def persona_propose(request: Request):
     """Public form body {name, reader, description, source_url, start_s, duration_s}
     + Bearer = the fleet access token. Strict validation; nothing is fetched
     except archive.org item metadata, and nothing is adopted automatically."""
@@ -109,7 +109,7 @@ async def persona_propose(request):
 
 
 @app.post("/api/persona/adopt")
-async def persona_adopt(request):
+async def persona_adopt(request: Request):
     """Admin action (same access token): move a proposed persona into the
     master catalog and fan the file out to every checkout root on this box.
     Instances read the catalog at call time — no restart needed."""
