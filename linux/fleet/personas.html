@@ -58,7 +58,7 @@ button:hover { background:#3a6ee8; }
       const d = document.createElement("div");
       d.className = "card";
       const src = p.source_url
-        ? `<div><b>source</b><a href="${p.source_url}">${p.source_url.split("/download/")[1] || p.source_url}</a></div>
+        ? `<div><b>source</b><a href="${p.source_url}">Link</a></div>
            <audio controls preload="none" src="${p.source_url}#t=${p.start_s},${p.start_s + p.duration_s}"></audio>`
         : `<div><b>source</b><span>bundled default clip in the repo</span></div>`;
       d.innerHTML = `<div class="name">${p.name}</div><div class="reader">${p.description} · read by ${p.reader}</div>
@@ -78,7 +78,7 @@ button:hover { background:#3a6ee8; }
         const row = document.createElement("div");
         row.className = "prop";
         row.innerHTML = `<span class="n">${q.name}</span><span>by ${q.reader}</span>
-          <span class="muted">${q.source_url.split("/download/")[1] || ""}</span>`;
+          <span class="muted">${q.source_url.split("/download/")[1]?.split("/")[0] || ""}</span>`;
         const btn = document.createElement("button");
         btn.type = "button"; btn.textContent = "Adopt"; btn.style.padding = "4px 10px"; btn.style.fontSize = "11px";
         btn.addEventListener("click", async () => {
