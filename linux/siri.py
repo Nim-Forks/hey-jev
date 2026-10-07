@@ -24,6 +24,7 @@ config.TIMERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "t
 config.CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "tts")
 config.PERSONAS_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "personas")
 config.PERSONA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "persona.json")
+config.PERSONAS_CATALOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personas-catalog.json")
 # parity with win11: re-read the platform .env (linux keeps its .env at the
 # checkout root, which shared/config.py already finds; this is a no-op there
 # unless a linux/.env exists).

@@ -41,12 +41,63 @@ def _item_from_url(url: str):
     return m.group(1) if m else None
 
 
+def _file_entries():
+    """Optional data-file catalog, decoupled from code: the admin maintains
+    <checkout root>/personas-catalog.json; entries added there ship without
+    touching personas.py. Read at call time, so edits land without restarts.
+    A broken or missing file must never take the assistant down."""
+    path = getattr(config, "PERSONAS_CATALOG", None)
+    if not path or not os.path.exists(path):
+        return []
+    try:
+        data = json.load(open(path, encoding="utf-8"))
+        entries = data.get("personas", data) if isinstance(data, dict) else data
+        if not isinstance(entries, list):
+            return []
+        return [e for e in entries if isinstance(e, dict)]
+    except Exception:
+        return []
+
+
+def _norm_entry(p: dict):
+    """Normalize one catalog entry to the shape the rest of the module expects."""
+    try:
+        reader = str(p["reader"]).strip()
+        name = str(p["name"]).strip().lower()
+        if not reader or not name:
+            return None
+        return {
+            "name": name,
+            "description": str(p.get("description") or "a persona voice"),
+            "reader": reader,
+            "source_url": (str(p["source_url"]).strip() if p.get("source_url") else None),
+            "source_license": str(p.get("source_license") or "publicdomain"),
+            "start_s": float(p.get("start_s") or 0.0),
+            "duration_s": float(p.get("duration_s") or 0.0),
+        }
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
 def catalog():
-    """The validated persona entries (construction-time license screen)."""
+    """Validated persona entries: the bundled defaults merged with the
+    data-file catalog (PERSONAS_CATALOG). Bundled entries keep the strict
+    construction-time license screen (raise on a bug in repo code); data-file
+    entries are license-screened and skipped when invalid so a bad edit can
+    never take the assistant down. The bundled 'jev' persona is always kept."""
     for p in _PERSONAS:
         if p["source_url"] is not None and not _license_ok(p["source_license"]):
             raise RuntimeError(f"persona {p['name']}: license not permissive: {p['source_license']}")
-    return _PERSONAS
+    merged = {p["name"]: p for p in _PERSONAS}
+    for raw in _file_entries():
+        p = _norm_entry(raw)
+        if p is None or p["name"] == "jev":   # the bundled default is immutable
+            continue
+        if p["source_url"] is not None:
+            if not _license_ok(p["source_license"]) or not _item_from_url(p["source_url"]):
+                continue
+        merged[p["name"]] = p
+    return list(merged.values())
 
 
 def resolve(name: str):

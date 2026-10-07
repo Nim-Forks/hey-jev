@@ -16,12 +16,39 @@ nav { margin-bottom:24px; font-size:12px; }
 .rows { margin-top:10px; line-height:1.9; }
 .rows b { color:#5c6a7e; font-size:10px; letter-spacing:1px; text-transform:uppercase; margin-right:8px; }
 audio { width:100%; margin-top:10px; }
+input { width:100%; padding:8px 10px; font:inherit; font-size:13px; background:#0b0e14; color:#e6edf5; border:1px solid #2a3444; border-radius:6px; }
+button { padding:9px 12px; font:inherit; font-size:13px; font-weight:600; background:#2f5fd8; color:#fff; border:0; border-radius:6px; cursor:pointer; }
+button:hover { background:#3a6ee8; }
+.prop { margin-top:6px; display:flex; gap:10px; align-items:baseline; }
+.prop .n { color:#6fa8ff; font-weight:700; }
 .muted { color:#5c6a7e; font-size:11px; }
 </style>
 </head>
 <body>
 <nav><a href="/">Fleet</a> · <a href="/tokens.html">Tokens</a> · <a href="/docs/09-instance-inventory.html">Docs</a> · <b>Personas</b> · <a href="/changelog.html">Changelog</a> · <a href="/qr.html">QR</a></nav>
 <h1>PERSONAS</h1>
+<div class="card">
+  <div class="name">Propose a new persona</div>
+  <form id="pform" style="margin-top:10px; display:grid; gap:8px;">
+    <input id="pf-name" placeholder="persona name (a-z, _-, e.g. ruby)" required>
+    <input id="pf-reader" placeholder="LibriVox reader (full name)" required>
+    <input id="pf-desc" placeholder="one-line description">
+    <input id="pf-url" placeholder="https://archive.org/download/<item>/<file>_64kb.mp3" required>
+    <input id="pf-start" type="number" min="0" step="1" value="0" placeholder="clip start (s)">
+    <input id="pf-len" type="number" min="5" max="30" step="1" value="25" placeholder="clip length (s, 5-30)">
+    <input id="pf-tok" type="password" placeholder="access token" required>
+    <button type="submit">Propose</button>
+    <div id="pf-msg" class="muted"></div>
+  </form>
+</div>
+<div class="card" id="proposed">
+  <div class="name">Proposed — awaiting adoption</div>
+  <div id="plist" class="rows"><span class="muted">loading…</span></div>
+  <div class="muted">Adoption is manual: an approved persona is copied to
+  personas-catalog.json on every checkout root and becomes available
+  immediately (no restarts). Proposals never download the clip themselves —
+  the assistant fetches (and re-checks the license) on first use.</div>
+</div>
 <div id="list"></div>
 <div class="muted">Curated LibriVox readers, public domain only — licenses checked at construction; fetches never touch user-supplied URLs. Voice identity = the persona's reference clip, cached per backend per line.</div>
 <script>
@@ -40,6 +67,40 @@ audio { width:100%; margin-top:10px; }
       list.appendChild(d);
     }
   } catch (e) { list.textContent = "personas.json failed to load"; }
+
+  async function loadProposals() {
+    try {
+      const j = await (await fetch("/api/persona/requests", { cache: "no-store" })).json();
+      plist.innerHTML = j.requests.filter(q => q.status !== "adopted").map(q =>
+        `<div class="prop"><span class="n">${q.name}</span><span>by ${q.reader}</span>
+         <span class="muted">${q.source_url.split("/download/")[1] || ""}</span></div>`).join("")
+        || `<span class="muted">no open proposals</span>`;
+    } catch { plist.textContent = "proposals unavailable"; }
+  }
+  loadProposals();
+
+  pform.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    pfmsg.textContent = "submitting…";
+    try {
+      const r = await fetch("/api/persona/propose", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + pftok.value.trim(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: pfname.value, reader: pfreader.value, description: pfdesc.value,
+          source_url: pfurl.value, start_s: Number(pfstart.value) || 0,
+          duration_s: Number(pflen.value) || 25,
+        }),
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        pfmsg.textContent = "rejected: " + (j.reason || j.error || ("HTTP " + r.status));
+        return;
+      }
+      pfmsg.textContent = j.dup ? "already proposed" : `proposed ✓ queued for adoption (item ${j.entry.item})`;
+      pform.reset(); loadProposals();
+    } catch (e) { pfmsg.textContent = "submit failed: " + e; }
+  });
 })();
 </script>
 </body>

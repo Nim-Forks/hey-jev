@@ -22,6 +22,7 @@ config.TIMERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "t
 config.CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "tts")
 config.PERSONAS_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "personas")
 config.PERSONA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "persona.json")
+config.PERSONAS_CATALOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personas-catalog.json")
 # shared/config.py's dotenv walk starts at shared/ and misses this platform's
 # .env; re-read it so settings like TTS_BACKEND (read at config import) apply.
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)

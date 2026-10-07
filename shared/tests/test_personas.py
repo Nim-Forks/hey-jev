@@ -88,6 +88,62 @@ def test_real_catalog_is_screened():
     assert personas.resolve("kara") == "kara" and personas.resolve("kilmer") == "kilmer"
 
 
+# ---------------------------------------------------------------- data-file catalog
+# personas are decoupled from code: an admin-maintained personas-catalog.json at
+# the checkout root extends (or skips) entries; read at call time, license-screened.
+
+def _catalog_file(tmp_path, entries_or_text):
+    p = tmp_path / "personas-catalog.json"
+    if isinstance(entries_or_text, str):
+        p.write_text(entries_or_text, encoding="utf-8")  # raw (corrupt) file
+    else:
+        p.write_text(json.dumps({"personas": entries_or_text}), encoding="utf-8")
+    return str(p)
+
+
+def test_data_file_extends_catalog(monkeypatch, tmp_path):
+    entry = {"name": "ruby", "description": "a bright reading", "reader": "R. Reader",
+             "source_url": "https://archive.org/download/item_rb/file_64kb.mp3",
+             "source_license": "cc0", "start_s": 5.0, "duration_s": 20.0}
+    cat = _catalog_file(tmp_path, [{"name": "jev", "description": "imposter", "reader": "x",
+                                    "source_url": None, "source_license": "publicdomain",
+                                    "start_s": 0, "duration_s": 0}, entry])
+    monkeypatch.setattr(config, "PERSONAS_CATALOG", cat, raising=False)
+    names = [p["name"] for p in personas.catalog()]
+    assert names == ["jev", "kara", "kilmer", "ruby"]   # bundled order kept, file appended
+    assert personas.resolve("ruby") == "ruby"
+
+
+def test_data_file_jev_is_immutable(monkeypatch, tmp_path):
+    cat = _catalog_file(tmp_path, [{"name": "jev", "description": "imposter", "reader": "x",
+                                    "source_url": "https://archive.org/download/i/f.mp3",
+                                    "source_license": "publicdomain", "start_s": 0, "duration_s": 5}])
+    monkeypatch.setattr(config, "PERSONAS_CATALOG", cat, raising=False)
+    bundled = [p for p in personas.catalog() if p["name"] == "jev"]
+    assert len(bundled) == 1 and bundled[0]["reader"] == "Elizabeth Klett"
+
+
+def test_data_file_skips_bad_license_and_malformed(monkeypatch, tmp_path):
+    cat = _catalog_file(tmp_path, [
+        {"name": "bad", "description": "d", "reader": "r",
+         "source_url": "https://archive.org/download/i/f.mp3",
+         "source_license": "CC-BY-NC", "start_s": 0, "duration_s": 5},          # not permissive
+        {"name": "ghost", "reader": ""},                                        # missing/blank reader
+        {"name": "OK2", "description": "d", "reader": "r",
+         "source_url": "https://example.com/no.mp3",
+         "source_license": "cc0", "start_s": 0, "duration_s": 5},               # not archive.org
+    ])
+    monkeypatch.setattr(config, "PERSONAS_CATALOG", cat, raising=False)
+    names = [p["name"] for p in personas.catalog()]
+    assert "bad" not in names and "ghost" not in names and "ok2" not in names
+
+
+def test_broken_catalog_file_falls_back(monkeypatch, tmp_path):
+    cat = _catalog_file(tmp_path, "{ not json at all")
+    monkeypatch.setattr(config, "PERSONAS_CATALOG", cat, raising=False)
+    assert [p["name"] for p in personas.catalog()] == ["jev", "kara", "kilmer"]
+
+
 # ------------------------------------------------------------------ integration
 # persona voice flows through the TTS seam (task 3.1) — offline via fake engine
 

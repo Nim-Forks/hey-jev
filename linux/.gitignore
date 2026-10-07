@@ -5,3 +5,4 @@ __pycache__/
 timers.json
 persona.json
 cache/
+personas-catalog.json

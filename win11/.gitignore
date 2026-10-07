@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 timers.json
 persona.json
+personas-catalog.json
