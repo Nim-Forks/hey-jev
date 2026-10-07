@@ -44,8 +44,12 @@ def build_checks():
 def build_personas():
     sys.path.insert(0, PROD)
     try:
-        from shared import personas
-        npersonas = personas.catalog()
+        from shared import config
+        master = os.path.join(HERE, "personas-catalog.json")
+        if os.path.exists(master):
+            config.PERSONAS_CATALOG = master   # single source of truth on the box
+        import personas as personas_mod
+        npersonas = personas_mod.catalog()
         json.dump(npersonas, open(os.path.join(HERE, "personas.json"), "w"), indent=1)
         return f"personas: {len(npersonas)}"
     finally:

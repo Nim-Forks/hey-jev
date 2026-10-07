@@ -112,8 +112,7 @@ async def persona_propose(request: Request):
 async def persona_adopt(request: Request):
     """Admin action (same access token): move a proposed persona into the
     master catalog and fan the file out to every checkout root on this box.
-    Instances read the catalog at call time — no restart needed."""
-    if not _authed(request):
+    Instances read the catalog at call time — no restart needed."""    if not _authed(request):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     try:
         body = json.loads(await request.body())
@@ -148,9 +147,40 @@ for d in /home/nimesin/combo/*/; do cp {MASTER} "$d/personas-catalog.json"; done
 """], capture_output=True, text=True, check=True)
         fanout = out.stderr.strip()
     except subprocess.CalledProcessError as e:
+        try:
+            await asyncio.to_thread(render_personas)   # still refresh the site list
+        except Exception:
+            pass
         return JSONResponse({"ok": True, "name": name,
                              "warning": f"catalog updated but fan-out failed: {e.stderr[:200]}"})
+    try:
+        await asyncio.to_thread(render_personas)
+    except Exception as e:
+        print("adopt render_personas failed:", e)
     return {"ok": True, "name": name, "fanned_out": True}
+
+
+def render_personas():
+    """Re-render personas.json from the master catalog so the site's persona
+    list reflects adoptions immediately (site build or adopt hook)."""
+    import sys
+    sys.path.insert(0, PROD)
+    try:
+        from shared import config
+        if os.path.exists(MASTER):
+            config.PERSONAS_CATALOG = MASTER
+        from shared import personas
+        json.dump(personas.catalog(), open(os.path.join(BASE, "personas.json"), "w"), indent=1)
+    finally:
+        sys.path.pop(0)
+
+
+@app.on_event("startup")
+async def _startup_render():
+    try:
+        await asyncio.to_thread(render_personas)
+    except Exception as e:
+        print("startup render_personas failed:", e)
 
 
 @app.get("/api/health")
