@@ -106,6 +106,34 @@
   #history button.rerun { color:var(--c-warn); }
   #history button.editbtn { color:var(--c-busy); }
   #history button:active { background:var(--panel-border); }
+  #snippetbox { margin-top:.6rem; width:min(86vw,420px); border:1px solid var(--tile-border);
+                border-radius:8px; background:var(--tile-bg); }
+  #snippetbox summary { cursor:pointer; padding:.55rem .8rem; color:var(--sub);
+                        font-size:.85rem; user-select:none; list-style:none;
+                        display:flex; align-items:center; }
+  #snippetbox summary::before { content:"▸"; margin-right:.45rem; color:var(--dim);
+                                transition:transform .15s; }
+  #snippetbox[open] summary::before { transform:rotate(90deg); }
+  #clearsnippets { background:none; border:0; cursor:pointer; font-size:.85rem;
+                   color:var(--dim); margin-left:auto; padding:0 .2rem; }
+  #clearsnippets:hover { color:var(--held-color); }
+  #snippetadd { display:flex; gap:.4rem; padding:.1rem .8rem .5rem; }
+  #snippetadd input { flex:1; min-width:0; background:var(--panel); border:1px solid var(--panel-border);
+                      border-radius:6px; padding:.35rem .6rem; color:var(--text); font-size:.8rem; }
+  #snippetadd input:focus { outline:1px solid var(--accent); }
+  #snippetadd button { background:var(--panel); color:var(--accent); border:1px solid var(--panel-border);
+                       border-radius:6px; width:30px; cursor:pointer; font-size:.95rem; flex-shrink:0; }
+  #snippetadd button:active { background:var(--panel-border); }
+  #snippets { list-style:none; padding:0; margin:.2rem 0 .5rem; max-height:160px;
+              overflow-y:auto; width:100%; }
+  #snippets li { display:flex; align-items:center; gap:.5rem; padding:.3rem .8rem; font-size:.8rem; }
+  #snippets .smain { flex:1; min-width:0; color:var(--sub); text-align:left; overflow:hidden;
+                     text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+  #snippets .smain:hover { color:var(--accent); }
+  #snippets button { background:var(--panel); color:var(--accent); border:1px solid var(--panel-border);
+                     border-radius:50%; width:26px; height:26px; cursor:pointer;
+                     font-size:.7rem; line-height:1; flex-shrink:0; }
+  #snippets button:active { background:var(--panel-border); }
   #foot { position:fixed; bottom:.8rem; font-size:.75rem; color:var(--dim); z-index:40; }
   #foot a { color:var(--dim); }
   #tokenbox { display:none; position:fixed; inset:0; background:var(--scrim);
@@ -133,6 +161,7 @@
   #tiles { order:7; }
   #timers { order:8; }
   #historybox { order:9; }
+  #snippetbox { order:10; }
 
   /* ---- themes (body[data-theme]) ---- */
   body[data-theme="hal"] {
@@ -307,6 +336,8 @@
     body .tile .small { margin:0; font-size:.68rem; }
     body #historybox { width:100%; margin-top:4px; background:transparent; }
     body #history { max-height: 34vh; }
+    body #snippetbox { width:100%; margin-top:6px; background:transparent; }
+    body #snippets { max-height: 22vh; }
     body #timers { width:100%; font-size:.85rem; margin:0 0 10px; }
 
     /* stage: ring around the PTT */
@@ -473,6 +504,15 @@
       <summary>History <small id="historycount"></small>
         <button id="clearhist" title="clear entire history">🗑</button></summary>
       <ul id="history"></ul>
+    </details>
+    <details id="snippetbox">
+      <summary>Snippets <small id="snippetcount"></small>
+        <button id="clearsnippets" title="clear all snippets">🗑</button></summary>
+      <div id="snippetadd">
+        <input id="snippetinput" type="text" placeholder="new snippet — Enter or + to save" maxlength="200">
+        <button id="snippetbtn" title="save snippet">+</button>
+      </div>
+      <ul id="snippets"></ul>
     </details>
   </section>
   <div id="hudform">

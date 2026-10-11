@@ -462,6 +462,51 @@ function clearAllHistory() {
   saveHistory([]);
   renderHistory();
 }
+
+// ------------------------------------------------------------- snippets (fill, not send)
+function loadSnippets() {
+  try {
+    const s = JSON.parse(localStorage.getItem("heyjev.snippets") || "[]");
+    return Array.isArray(s) ? s.filter((x) => typeof x === "string") : [];
+  } catch { return []; }
+}
+function saveSnippets(s) { localStorage.setItem("heyjev.snippets", JSON.stringify(s.slice(0, 30))); }
+function renderSnippets() {
+  const ul = $("snippets");
+  ul.innerHTML = "";
+  const items = loadSnippets();
+  $("snippetcount").textContent = items.length ? "(" + items.length + ")" : "(empty)";
+  for (const text of items) {
+    const li = document.createElement("li");
+    const main = document.createElement("span");
+    main.className = "smain";
+    main.textContent = text;
+    main.title = "click: put into the input box (not sent)";
+    main.onclick = () => {
+      const box = $("textbox");
+      box.value = text;
+      box.focus();
+      box.setSelectionRange(box.value.length, box.value.length);
+      setStatus("Ready", "Snippet in the box — press Enter to send…");
+    };
+    const del = document.createElement("button");
+    del.textContent = "✕";
+    del.title = "delete snippet";
+    del.onclick = () => { saveSnippets(loadSnippets().filter((x) => x !== text)); renderSnippets(); };
+    li.append(main, del);
+    ul.appendChild(li);
+  }
+}
+function addSnippet() {
+  const input = $("snippetinput");
+  const text = input.value.trim();
+  if (!text) return;
+  const s = loadSnippets().filter((x) => x !== text);   // dedupe, most recent first
+  s.unshift(text);
+  saveSnippets(s);
+  input.value = "";
+  renderSnippets();
+}
 function dayOf(ts) {
   const d = new Date(ts || Date.now());
   const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
@@ -559,12 +604,19 @@ window.addEventListener("load", () => {
   applyTheme(loadTheme());
   connect();
   renderHistory();
+  renderSnippets();
   const ptt = $("ptt");
   ptt.addEventListener("pointerdown", pttDown);
   ptt.addEventListener("pointerup", pttUp);
   ptt.addEventListener("pointerleave", pttUp);
   ptt.addEventListener("contextmenu", (e) => e.preventDefault());
   $("textform").addEventListener("submit", (e) => { e.preventDefault(); sendText(); });
+  $("snippetbtn").addEventListener("click", addSnippet);
+  $("snippetinput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addSnippet(); } });
+  $("clearsnippets").addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (confirm("Clear all snippets?")) { saveSnippets([]); renderSnippets(); }
+  });
   $("t-weather-tile").addEventListener("click", requestLocationWeather);
   $("clearhist").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); clearAllHistory(); });
   $("cancelbtn").addEventListener("click", () => {
