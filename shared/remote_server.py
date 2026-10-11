@@ -210,8 +210,13 @@ class RemoteServer:
             except Exception as exc:
                 print(f"\n  remote turn failed: {exc}")
                 notify("Something went wrong", str(exc))
+                msg = str(exc)
+                line = brain.say_line(
+                    "backend_down" if any(s in msg for s in
+                                          ("systemone", "decisions", "decision backend"))
+                    else "give_up")
                 try:
-                    remote_say(brain.say_line("give_up"), notify)
+                    remote_say(line, notify)
                 except Exception:
                     pass
         finally:

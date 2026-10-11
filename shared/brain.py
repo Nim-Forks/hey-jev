@@ -234,6 +234,7 @@ REPLIES = {
     "wake": ["Yes?", "[cheerful] Mm-hm?", "I'm listening."],
     "clarify": ["[clear throat] Sorry, say that again?", "Hm, one more time?"],
     "give_up": ["[sighing] I'm not sure what you mean. Try saying it differently?"],
+    "backend_down": ["[sighing] My decision backend is not answering. Check the saved keys in Settings, or switch to another server."],
     "timer_set": ["[cheerful] Timer's set.", "On it. I'll let you know.", "Done, counting down."],
     "reminder_set": ["Got it, I'll remind you.", "[cheerful] Sure, I'll give you a shout."],
     "timer_check": ["{left} left.", "You've got {left} to go."],
