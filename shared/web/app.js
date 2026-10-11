@@ -502,6 +502,7 @@ window.addEventListener("load", () => {
 
   // HUD on-screen keyboard (desktop): appends into the command input
   const kb = $("kbrows");
+  const kbPanel = $("hudkb");   // the resize targets the PANEL, so the border and the SYSTEMS panel follow
   if (kb) {
     const rows = ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
     for (const r of rows) {
@@ -539,15 +540,15 @@ window.addEventListener("load", () => {
     kb.appendChild(grip);
     try {
       const saved = JSON.parse(localStorage.getItem("heyjev.kb") || "{}");
-      if (saved.w) kb.style.width = saved.w + "px";
-      if (saved.h) kb.style.setProperty("--kb-h", saved.h + "px");
+      if (saved.w) kbPanel.style.width = saved.w + "px";
+      if (saved.h) kbPanel.style.setProperty("--kb-h", saved.h + "px");
     } catch {}
     let drag = null;
     grip.addEventListener("pointerdown", (e) => {
       drag = {
         x: e.clientX, y: e.clientY,
-        w: kb.offsetWidth,
-        h: parseFloat(getComputedStyle(kb).getPropertyValue("--kb-h")) || 32,
+        w: kbPanel.offsetWidth,
+        h: parseFloat(getComputedStyle(kbPanel).getPropertyValue("--kb-h")) || 32,
       };
       grip.setPointerCapture(e.pointerId);
       e.preventDefault();
@@ -556,16 +557,16 @@ window.addEventListener("load", () => {
       if (!drag) return;
       const w = Math.max(240, Math.min(window.innerWidth * 0.55, drag.w + (e.clientX - drag.x)));
       const h = Math.max(24, Math.min(72, drag.h + (e.clientY - drag.y)));
-      kb.style.width = w + "px";
-      kb.style.setProperty("--kb-h", h + "px");
+      kbPanel.style.width = w + "px";
+      kbPanel.style.setProperty("--kb-h", h + "px");
     });
     const endDrag = () => {
       if (!drag) return;
       drag = null;
       try {
         localStorage.setItem("heyjev.kb", JSON.stringify({
-          w: Math.round(kb.offsetWidth),
-          h: parseInt(getComputedStyle(kb).getPropertyValue("--kb-h")) || 32,
+          w: Math.round(kbPanel.offsetWidth),
+          h: parseInt(getComputedStyle(kbPanel).getPropertyValue("--kb-h")) || 32,
         }));
       } catch {}
     };
