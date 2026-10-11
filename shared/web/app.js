@@ -606,6 +606,8 @@ let fleetList = [];                  // [{name, url, lat, lon, _host}]
 let fleetHealth = {};                // name -> {up, ms}
 let globeDirty = true, globeHover = null, globeDrag = null, globeSelectedName = null;
 let globeRot = { lon: -30, lat: -18 };
+let globeSpin = 0, globeLastTs = null;   // eased auto-rotation, one turn per hour
+const SPIN_RATE = 360 / 3600;            // deg per second
 
 function markerPos(i, n) {
   const golden = Math.PI * (3 - Math.sqrt(5));
@@ -792,7 +794,16 @@ function drawGlobe() {
   }
 }
 
-function globeLoop() {
+function globeLoop(ts) {
+  if (globeLastTs === null) globeLastTs = ts;
+  const dt = Math.min(0.1, (ts - globeLastTs) / 1000);
+  globeLastTs = ts;
+  const target = globeDrag ? 0 : 1;               // pause while the user holds it
+  globeSpin += (target - globeSpin) * Math.min(1, dt * 1.5);   // ease out/in ~1.5s
+  if (globeSpin > 0.001) {
+    globeRot.lon = (globeRot.lon + SPIN_RATE * globeSpin * dt) % 360;
+    globeDirty = true;
+  }
   if (globeDirty) { globeDirty = false; drawGlobe(); }
   requestAnimationFrame(globeLoop);
 }
