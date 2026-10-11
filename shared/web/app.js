@@ -370,7 +370,7 @@ function renderPersonaPanel(list) {
 }
 
 function renderThemePanel() {
-  const wrap = $("tp-themes");
+  const wrap = $("tp-btns");
   if (!wrap) return;
   wrap.innerHTML = "";
   const cur = loadTheme();
