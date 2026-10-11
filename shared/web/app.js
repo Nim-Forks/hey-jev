@@ -532,6 +532,45 @@ window.addEventListener("load", () => {
     mk("SPACE", "", () => { const t = $("textbox"); t.value += " "; t.focus(); }, true);
     mk("SND", "accent", () => $("textform").requestSubmit ? $("textform").requestSubmit() : $("sendbtn").click(), true);
     kb.appendChild(last);
+
+    // corner-drag resize (width + key height), persisted per device
+    const grip = document.createElement("div");
+    grip.className = "kb-grip"; grip.title = "drag to resize";
+    kb.appendChild(grip);
+    try {
+      const saved = JSON.parse(localStorage.getItem("heyjev.kb") || "{}");
+      if (saved.w) kb.style.width = saved.w + "px";
+      if (saved.h) kb.style.setProperty("--kb-h", saved.h + "px");
+    } catch {}
+    let drag = null;
+    grip.addEventListener("pointerdown", (e) => {
+      drag = {
+        x: e.clientX, y: e.clientY,
+        w: kb.offsetWidth,
+        h: parseFloat(getComputedStyle(kb).getPropertyValue("--kb-h")) || 32,
+      };
+      grip.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    grip.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const w = Math.max(240, Math.min(window.innerWidth * 0.55, drag.w + (e.clientX - drag.x)));
+      const h = Math.max(24, Math.min(72, drag.h + (e.clientY - drag.y)));
+      kb.style.width = w + "px";
+      kb.style.setProperty("--kb-h", h + "px");
+    });
+    const endDrag = () => {
+      if (!drag) return;
+      drag = null;
+      try {
+        localStorage.setItem("heyjev.kb", JSON.stringify({
+          w: Math.round(kb.offsetWidth),
+          h: parseInt(getComputedStyle(kb).getPropertyValue("--kb-h")) || 32,
+        }));
+      } catch {}
+    };
+    grip.addEventListener("pointerup", endDrag);
+    grip.addEventListener("pointercancel", endDrag);
   }
 });
 
