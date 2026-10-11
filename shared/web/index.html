@@ -121,7 +121,7 @@
   #tokenbox .small { color:var(--dim); font-size:.75rem; margin-top:1rem; }
   #tokenbox .small a { color:var(--accent); text-decoration:none; }
 
-  #hudbl { display:none; }   /* keyboard + systems stack: desktop HUD only */
+  #hudkb { display:none; }   /* keyboard: desktop HUD only */
 
   /* ---- themes (body[data-theme]) ---- */
   body[data-theme="hal"] {
@@ -297,10 +297,17 @@
     body #history { max-height: 34vh; }
     body #timers { width:100%; font-size:.85rem; margin:0 0 10px; }
 
-    #panel-sys, #hudbl { position:fixed; left:22px; z-index:35; }
-    #hudbl { bottom:26px; width:max-content; min-width:330px; max-width:60vw; display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
-    #panel-sys { width:330px; display:none; }   /* fixed width — the drag resizes only the Input panel */
-    #hudbl #panel-sys { display:block; position:static; }
+    /* two INDEPENDENT panels, both anchored left: SYSTEMS pinned to the
+       bottom-left corner; the Input keyboard floats ABOVE it and grows
+       UPWARD only — resizing the keyboard never moves Systems. */
+    #panel-sys {
+      position:fixed; left:22px; bottom:24px; width:330px; z-index:35;
+      display:block; position:fixed;
+    }
+    #hudkb {
+      position:fixed; left:22px; bottom:calc(24px + var(--sys-h, 180px) + 12px);
+      width:var(--kb-w, 330px); z-index:36;
+    }
 
     /* theme-colored on-screen keyboard (fills #textbox); corner-drag resizable */
     #hudkb { width:var(--kb-w, 330px); position:relative; }
@@ -381,20 +388,14 @@
     <span class="hudline"></span>
     <span class="hudmeta" id="hudmeta">SYSTEMS NOMINAL</span>
   </div>
-  <div id="hudbl">
-    <div id="hudkb" class="hud-panel">
-      <div class="hud-title">Input</div>
-      <div id="kbrows"></div>
+  <section id="panel-sys" class="hud-panel">
+    <div class="hud-title">Systems</div>
+    <div id="tiles">
+      <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
+      <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
+      <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
     </div>
-    <section id="panel-sys" class="hud-panel">
-      <div class="hud-title">Systems</div>
-      <div id="tiles">
-        <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
-        <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
-        <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
-      </div>
-    </section>
-  </div>
+  </section>
   <div id="stage">
     <div id="ringwrap">
       <svg viewBox="0 0 400 400" aria-hidden="true">

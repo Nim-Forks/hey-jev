@@ -500,6 +500,14 @@ window.addEventListener("load", () => {
   $("tokensave").addEventListener("click", saveTokenAndConnect);
   $("tokeninput").addEventListener("keydown", (e) => { if (e.key === "Enter") saveTokenAndConnect(); });
 
+  // keep the keyboard anchored above the Systems panel: report its height
+  const sys = $("panel-sys");
+  if (sys && "ResizeObserver" in window) {
+    const setSysH = () => document.documentElement.style.setProperty("--sys-h", sys.offsetHeight + "px");
+    new ResizeObserver(setSysH).observe(sys);
+    setSysH();
+  }
+
   // HUD on-screen keyboard (desktop): appends into the command input
   const kb = $("kbrows");
   const kbPanel = $("hudkb");   // the resize targets the PANEL, so the border and the SYSTEMS panel follow
