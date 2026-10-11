@@ -499,6 +499,40 @@ window.addEventListener("load", () => {
   });
   $("tokensave").addEventListener("click", saveTokenAndConnect);
   $("tokeninput").addEventListener("keydown", (e) => { if (e.key === "Enter") saveTokenAndConnect(); });
+
+  // HUD on-screen keyboard (desktop): appends into the command input
+  const kb = $("kbrows");
+  if (kb) {
+    const rows = ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+    for (const r of rows) {
+      const row = document.createElement("div");
+      row.className = "kb-row";
+      for (const ch of r) {
+        const k = document.createElement("button");
+        k.type = "button"; k.className = "kb-key"; k.textContent = ch.toLowerCase();
+        k.addEventListener("click", () => { $("textbox").value += ch.toLowerCase(); $("textbox").focus(); });
+        row.appendChild(k);
+      }
+      kb.appendChild(row);
+    }
+    const last = document.createElement("div");
+    last.className = "kb-row";
+    const mk = (label, cls, fn, wide) => {
+      const k = document.createElement("button");
+      k.type = "button"; k.className = "kb-key " + cls; k.textContent = label;
+      if (wide) k.classList.add("wide");
+      k.addEventListener("click", fn);
+      last.appendChild(k);
+    };
+    mk(",", "", () => { const t = $("textbox"); t.value += ","; t.focus(); });
+    mk(".", "", () => { const t = $("textbox"); t.value += "."; t.focus(); });
+    mk("?", "", () => { const t = $("textbox"); t.value += "?"; t.focus(); });
+    mk("⌫", "danger", () => { const t = $("textbox"); t.value = t.value.slice(0, -1); t.focus(); }, true);
+    mk("CLR", "danger", () => { $("textbox").value = ""; }, true);
+    mk("SPACE", "", () => { const t = $("textbox"); t.value += " "; t.focus(); }, true);
+    mk("SND", "accent", () => $("textform").requestSubmit ? $("textform").requestSubmit() : $("sendbtn").click(), true);
+    kb.appendChild(last);
+  }
 });
 
 function requestLocationWeather() {
