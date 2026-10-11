@@ -375,7 +375,7 @@
     .tp-more:hover { color:var(--accent); }
 
     /* theme-colored on-screen keyboard (fills #textbox); corner-drag resizable */
-    #hudkb { width:var(--kb-w, 430px); position:relative; }
+    #hudkb { width:var(--kb-w, 430px); }   /* position:absolute from above; later rules must not flip it back to in-flow */
     #hudkb .kb-row { display:flex; gap:4px; margin-bottom:4px; }
     #hudkb .kb-row:nth-child(3) { padding-left:2.5%; }
     #hudkb .kb-row:nth-child(4) { padding-left:5%; }
