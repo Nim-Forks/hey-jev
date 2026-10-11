@@ -6,6 +6,21 @@ let recording = false, chunksSent = 0;
 
 // ------------------------------------------------------------- theme (per device)
 const THEMES = ["default", "hal", "ring", "steam", "ouro", "matrix"];
+const HUD_VERSION = "hud.3-20261011";   // bump on every HUD change
+
+function hudDiag(label) {
+  const ids = ["hudtop", "panel-tp", "hudkb", "panel-sys", "stage", "panel-ops", "hudform"];
+  const rows = ids.map((id) => {
+    const el = document.getElementById(id);
+    if (!el) return id + ": MISSING";
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return `${id}: display=${cs.display} pos=${cs.position} rect=${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`;
+  });
+  console.log(`[HUD ${label}] v=${HUD_VERSION} html.lastModified=${document.lastModified}` +
+    ` vp=${window.innerWidth}x${window.innerHeight}` +
+    ` saved-kb=${localStorage.getItem("heyjev.kb") || "-"}\n  ` + rows.join("\n  "));
+}
 function loadTheme() {
   const t = localStorage.getItem("heyjev.theme");
   return THEMES.includes(t) ? t : "default";
@@ -663,6 +678,16 @@ window.addEventListener("load", () => {
     grip.addEventListener("pointercancel", endDrag);
     window.addEventListener("resize", clampKb);
     renderThemePanel();
+
+    let diagTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(diagTimer);
+      diagTimer = setTimeout(() => hudDiag("resize"), 250);
+    });
+    setTimeout(() => hudDiag("boot+3s"), 3000);
+    hudDiag("boot");
+    const meta = $("hudmeta");
+    if (meta) meta.textContent = `${HUD_VERSION} · page ${document.lastModified} · ${window.innerWidth}x${window.innerHeight}`;
   }
 });
 
