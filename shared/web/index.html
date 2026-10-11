@@ -243,9 +243,9 @@
       grid-template-columns: minmax(0,1fr) 340px;
       grid-template-rows: 64px auto minmax(0,1fr) 44px;
       grid-template-areas:
-        "hudtop hudtop"
-        "hudform hudform"
-        "stage panel-ops"
+        "hudtop  hudtop"
+        "hudform panel-ops"
+        "stage   panel-ops"
         "hudfoot hudfoot";
       gap: 8px 24px; padding: 10px 28px 6px; min-height:100vh;
       background-image:
@@ -279,6 +279,8 @@
     #panel-ops { grid-area: panel-ops; align-self:start; margin-top:10px; }
     #stage { grid-area: stage; display:flex; flex-direction:column; align-items:center;
              justify-content:center; position:relative; min-height:0; }
+    #hudform { grid-area: hudform; display:flex; flex-direction:column; align-items:center;
+               padding:6px 0 2px; }
 
     .hud-panel {
       background: color-mix(in srgb, var(--bg) 72%, transparent);
