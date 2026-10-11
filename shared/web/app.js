@@ -39,6 +39,16 @@ function applyTheme(name) {
   if (name === "default") delete document.body.dataset.theme;
   else document.body.dataset.theme = name;
   localStorage.setItem("heyjev.theme", name);
+  const labels = {
+    default: "HOLD TO<br>TALK",
+    hal: "SPEAK<br>DAVE",
+    ring: "SPEAK,<br>FRIEND",
+    steam: "SPEAK, IF<br>YOU PLEASE",
+    ouro: "HOLD TO<br>TALK",
+    matrix: "HOLD TO<br>TALK",
+  };
+  const ptt = document.getElementById("ptt");
+  if (ptt) ptt.innerHTML = labels[name] || labels.default;
 }
 
 // ------------------------------------------------------------- keys (localStorage)
