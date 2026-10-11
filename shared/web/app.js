@@ -543,9 +543,9 @@ function escapeHtml(s) {
 }
 
 // ------------------------------------------------------------- typed text
-function sendText() {
+function sendText(preset) {
   const box = $("textbox");
-  const text = box.value.trim();
+  const text = (preset === undefined ? box.value : preset).trim();
   if (!text || !wsReady) return;
   askNotificationPermission();
   unlockAudio();
