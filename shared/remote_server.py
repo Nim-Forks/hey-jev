@@ -589,7 +589,8 @@ def stt_spec():
 def _ws_tiles(conn):
     try:
         conn.send_text({"type": "tiles", "tiles": brain.tiles_data(),
-                        "personas": personas.list_personas()})
+                        "personas": personas.list_personas(),
+                        "persona_switchable": config.TTS_BACKEND == "chatterbox"})
     except Exception:
         pass
 

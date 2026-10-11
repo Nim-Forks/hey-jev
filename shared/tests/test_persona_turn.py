@@ -42,12 +42,12 @@ def turn(monkeypatch):
     from test_tts_local import FakeModel
     states, played = [], []
 
-    def go(text, backend="chatterbox"):
+    def go(text, backend="chatterbox", ans=None):
         monkeypatch.setattr(config, "TTS_BACKEND", backend)        # local voice, fake engine
         monkeypatch.setattr(config, "play_wav_hook", lambda p: played.append(p))
         monkeypatch.setattr(brain, "emit", lambda n, s, d="": states.append((s, d)))
         monkeypatch.setattr(tts, "_MODELS", {"nano": FakeModel()})
-        monkeypatch.setattr(config, "jev", lambda t, q: (base_ans(persona_action=("switch", 0.9),
+        monkeypatch.setattr(config, "jev", lambda t, q: (ans or base_ans(persona_action=("switch", 0.9),
                                                                   persona_name=(t.split()[-1] if t.split()[-1] in ("kara", "kilmer", "jev", "bogus") else "none",
                                                                   0.9 if t.split()[-1] in ("kara", "kilmer", "jev", "bogus") else 0.3)), 5, 0.0))
         brain.handle(text)
@@ -128,6 +128,30 @@ def test_offline_reuse_after_restart(monkeypatch, state_isolation, synthetic_cli
     states, played = turn("what personas are there")                     # offline roster
     assert personas.clip_for("kara") == tts.active_clip()                # 10.2/10.3/10.6
     assert played and played[-1].endswith(".wav")                        # roster still spoken
+
+
+def test_chip_phrase_without_backend_name(monkeypatch, state_isolation, synthetic_clip, turn):
+    """The HUD chip sends exactly 'switch to kara' — no 'persona' word. Live
+    Liquid answers persona_name=none at 0.99, which used to dead-end in
+    persona_unknown. The anchored override must switch anyway."""
+    monkeypatch.setattr(personas, "_PERSONAS", _two_catalog())
+    _stub_http(monkeypatch, synthetic_clip)
+    states, played = turn("switch to kara",
+                          ans=base_ans(persona_action=("switch", 1.0), persona_name=("none", 0.99)))
+    assert personas.active() == "kara"
+    spoken = [d for s, d in states if s == "Speaking"]
+    assert any("kara" in d for d in spoken)
+    assert len(played) == 1
+
+
+def test_chip_phrase_ignored_for_non_personas():
+    assert brain.persona_override("switch to kara") == ("switch", "kara")
+    assert brain.persona_override("switch to the kara") == ("switch", "kara")
+    assert brain.persona_override("Switch to KARA!") == ("switch", "kara")
+    assert brain.persona_override("switch to spotify") is None     # real command: normal routing
+    assert brain.persona_override("switch the lights off") is None
+    assert brain.persona_override("switch persona to kara") == ("switch", "kara")   # existing phrasings kept
+    assert brain.persona_override("switch to the kara persona") == ("switch", "kara")
 
 
 def hashlib_identity(state_isolation):

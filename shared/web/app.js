@@ -187,7 +187,7 @@ function connect() {
         lastTiles = msg.tiles;
         window.lastPersonas = msg.personas || [];
         renderTiles();
-        if (msg.personas) renderPersonaPanel(msg.personas);
+        if (msg.personas) renderPersonaPanel(msg.personas, msg.persona_switchable);
       } else if (msg.type === "tile-weather") {
         locWeather = msg.weather;
         locWeatherUntil = Date.now() + 30 * 60 * 1000;
@@ -344,10 +344,18 @@ function renderTimers(timers) {
 }
 
 // ------------------------------------------------------------- hud panel (themes + personas)
-function renderPersonaPanel(list) {
+function renderPersonaPanel(list, switchable) {
   const wrap = $("tp-personas");
   if (!wrap || !list) return;
-  wrap.innerHTML = "";
+  const title = $("tp-personas-title");
+  if (switchable === false) {          // fish-voice instance: the server refuses switches
+    wrap.innerHTML = "";
+    if (title) title.style.display = "none";
+    wrap.style.display = "none";
+    return;
+  }
+  if (title) title.style.display = "";
+  wrap.style.display = "";
   for (const p of list) {
     const b = document.createElement("button");
     b.type = "button";

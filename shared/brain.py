@@ -758,6 +758,10 @@ MEM_FORGET_RE = re.compile(r"\bforget\b", re.I)
 
 PERSONA_SWITCH_RE = re.compile(r"\b(?:switch|change|go)\s+(?:the\s+)?persona\s+(?:to|as)\s+([a-z]+)", re.I)
 PERSONA_SWITCH_B_RE = re.compile(r"\bswitch\s+to\s+(?:the\s+)?([a-z]+)\s+persona\b", re.I)
+# the HUD chip sends exactly "switch to <name>" — no "persona" word, so the
+# backend must not be trusted to extract the name (Liquid answers
+# persona_name=none). Anchored, and accepted only for a known persona name.
+PERSONA_SWITCH_UI_RE = re.compile(r"^\W*switch\s+to\s+(?:the\s+)?([a-z]+)\W*$", re.I)
 PERSONA_LIST_RE = re.compile(
     r"\b(?:what|which)\s+(?:are\s+(?:the|your)\s+)?personas?\b"
     r"|\b(?:list|show)(?:\s+(?:the|your|me))*\s+personas?\b"
@@ -773,6 +777,9 @@ def persona_override(text):
         return ("list", None)
     m = PERSONA_SWITCH_RE.search(t) or PERSONA_SWITCH_B_RE.search(t)
     if m:
+        return ("switch", m.group(1).lower())
+    m = PERSONA_SWITCH_UI_RE.match(t)
+    if m and personas.resolve(m.group(1)):
         return ("switch", m.group(1).lower())
     return None
 
