@@ -319,6 +319,14 @@
     #globeinfo { margin-top:6px; font-size:.7rem; color:var(--sub); line-height:1.55;
                  font-family:ui-monospace,Consolas,monospace; min-height:1em; }
     #globeinfo b { color:var(--accent); }
+    #globespin { display:flex; align-items:center; gap:.55rem; margin-top:5px;
+                 font-family:ui-monospace,Consolas,monospace; font-size:.64rem; color:var(--dim); }
+    #globespin button { background:var(--panel); color:var(--sub);
+                        border:1px solid var(--panel-border); border-radius:4px;
+                        padding:2px 8px; cursor:pointer; font-size:.62rem; font-family:inherit; }
+    #globespin button:active { background:var(--panel-border); color:var(--accent); }
+    #spinrange { flex:1; min-width:0; accent-color:var(--accent); height:2px; }
+    #spinlabel { min-width:7ch; text-align:right; white-space:nowrap; }
     #globeinfo .up { color:#22c55e; } #globeinfo .down { color:#ef4444; }
     #globeinfo button { background:var(--panel); color:var(--accent);
                         border:1px solid color-mix(in srgb, var(--accent) 40%, transparent);
@@ -547,6 +555,12 @@
       <span><i style="font-style:normal;color:#22c55e">●</i> online</span>
       <span><i style="font-style:normal;color:#eab308">●</i> weak</span>
       <span><i style="font-style:normal;color:#ef4444">●</i> offline</span></div>
+    <div id="globespin">
+      <button type="button" data-spin="60">1/min</button>
+      <button type="button" data-spin="3600">1/hour</button>
+      <input id="spinrange" type="range" min="0" max="100" value="65">
+      <span id="spinlabel"></span>
+    </div>
     <div id="globeinfo"></div>
     <div id="globetip"></div>
   </section>

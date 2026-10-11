@@ -606,8 +606,25 @@ let fleetList = [];                  // [{name, url, lat, lon, _host}]
 let fleetHealth = {};                // name -> {up, ms}
 let globeDirty = true, globeHover = null, globeDrag = null, globeSelectedName = null;
 let globeRot = { lon: -30, lat: -18 };
-let globeSpin = 0, globeLastTs = null;   // eased auto-rotation, one turn per hour
-const SPIN_RATE = 360 / 3600;            // deg per second
+let globeSpin = 0, globeLastTs = null;   // eased auto-rotation
+let spinPeriod = 3600;                   // seconds per rotation (default: 1/hour)
+const SPIN_MIN = 10, SPIN_MAX = 86400;   // slider range: 10s … 24h per turn
+
+function spinLabel(p) {
+  if (p < 90) return Math.round(p) + "s / turn";
+  if (p < 5400) return Math.round(p / 60) + "min / turn";
+  return (Math.round(p / 360) / 10) + "h / turn";
+}
+
+function setSpinPeriod(p, fromSlider) {
+  spinPeriod = Math.max(SPIN_MIN, Math.min(SPIN_MAX, p));
+  localStorage.setItem("heyjev.spin", String(spinPeriod));
+  const sl = $("spinrange"), lb = $("spinlabel");
+  if (lb) lb.textContent = spinLabel(spinPeriod);
+  if (sl && !fromSlider) {
+    sl.value = Math.round(100 * Math.log(spinPeriod / SPIN_MIN) / Math.log(SPIN_MAX / SPIN_MIN));
+  }
+}
 
 function markerPos(i, n) {
   const golden = Math.PI * (3 - Math.sqrt(5));
@@ -801,7 +818,7 @@ function globeLoop(ts) {
   const target = globeDrag ? 0 : 1;               // pause while the user holds it
   globeSpin += (target - globeSpin) * Math.min(1, dt * 1.5);   // ease out/in ~1.5s
   if (globeSpin > 0.001) {
-    globeRot.lon = (globeRot.lon + SPIN_RATE * globeSpin * dt) % 360;
+    globeRot.lon = (globeRot.lon + (360 / spinPeriod) * globeSpin * dt) % 360;
     globeDirty = true;
   }
   if (globeDirty) { globeDirty = false; drawGlobe(); }
@@ -876,6 +893,13 @@ function initGlobe() {
   cv.addEventListener("pointerleave", () => {
     if (!globeDrag) { globeHover = null; tip.style.display = "none"; globeDirty = true; }
   });
+  const savedSpin = parseFloat(localStorage.getItem("heyjev.spin") || "3600");
+  setSpinPeriod(isFinite(savedSpin) && savedSpin > 0 ? savedSpin : 3600);
+  $("spinrange").addEventListener("input", (e) => {
+    setSpinPeriod(SPIN_MIN * Math.pow(SPIN_MAX / SPIN_MIN, e.target.value / 100), true);
+  });
+  cv.closest(".hud-panel").querySelectorAll("[data-spin]").forEach((b) =>
+    b.addEventListener("click", () => setSpinPeriod(parseFloat(b.dataset.spin))));
   requestAnimationFrame(globeLoop);
 }
 
