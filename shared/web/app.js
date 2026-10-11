@@ -397,7 +397,7 @@ function renderThemePanel() {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "tp-btn" + (t === cur ? " active" : "");
-    b.textContent = t;
+    b.textContent = t === "default" ? "jarvis" : t;
     b.addEventListener("click", () => { applyTheme(t); renderThemePanel(); });
     wrap.appendChild(b);
   }

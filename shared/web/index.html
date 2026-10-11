@@ -11,17 +11,17 @@
 <title>Hey Jev</title>
 <style>
   :root { color-scheme:dark;
-    --bg:#1e1e22; --scrim:#1e1e22f0; --accent:#3fbf5f; --accent-contrast:#10240f;
-    --text:#fff; --sub:#9a9aa2; --dim:#6f6f77;
-    --panel:#2c2c31; --panel-border:#3a3a40;
-    --tile-bg:#232328; --tile-border:#2c2c31;
-    --ptt-border:#3a3a40; --ptt-bg-start:#2c2c31; --ptt-bg-end:#1e1e22;
-    --ptt-glow:0 0 40px #e0454533; --ptt-glow-color:224,69,69;
-    --ptt-font:inherit; --ptt-letter-spacing:.05em;
-    --held-border:#e04545; --held-color:#e04545;
+    --bg:#040a12; --scrim:#040a12f0; --accent:#4fd2ff; --accent-contrast:#02141f;
+    --text:#dceeff; --sub:#7fa8c0; --dim:#4a6a80;
+    --panel:#0a1520; --panel-border:#17334e;
+    --tile-bg:#081220; --tile-border:#17334e;
+    --ptt-border:#1c4a6e; --ptt-bg-start:#0c2a44; --ptt-bg-end:#050d18;
+    --ptt-glow:0 0 46px rgba(80,200,255,.4); --ptt-glow-color:80,200,255;
+    --ptt-font:inherit; --ptt-letter-spacing:.12em;
+    --held-border:#7fe0ff; --held-color:#7fe0ff;
     --font:"Segoe UI",system-ui,sans-serif;
-    --c-warn:#e0913d; --c-ok:#3fbf5f; --c-listen:#e04545; --c-busy:#3d7be0;
-    --c-think:#9355d6; --c-speak:#3fbfb5; --c-err:#e04545; --c-timer:#d6c437;
+    --c-warn:#ffc46b; --c-ok:#3fd0a0; --c-listen:#4fd2ff; --c-busy:#3d9be0;
+    --c-think:#9355d6; --c-speak:#3fc8d0; --c-err:#e04545; --c-timer:#d6c437;
     --audio-level:0;
   }
   body { background:var(--bg); color:var(--text); font-family:var(--font);
@@ -300,6 +300,27 @@
   body[data-theme="matrix"] #ptt.held { animation:matrix-glow 1.2s ease-in-out infinite, matrix-flicker 4s infinite; }
   @keyframes matrix-glow { 0%,100% { box-shadow:0 0 36px rgba(0,255,65,.35); }
                            50% { box-shadow:0 0 66px rgba(0,255,65,.6); } }
+
+  /* default theme = JARVIS: arc-reactor PTT */
+  body:not([data-theme]) #ptt {
+    border-width:2px; border-color:rgba(90,205,255,.55);
+    box-shadow: 0 0 18px rgba(80,200,255,.22), inset 0 0 16px rgba(80,200,255,.14);
+    text-shadow:0 0 8px rgba(120,220,255,.55);
+  }
+  body:not([data-theme]) #ptt::before {   /* reactor ring */
+    content:""; position:absolute; inset:11%; border-radius:50%; pointer-events:none;
+    border:1px solid rgba(130,220,255,.5);
+    box-shadow: 0 0 10px rgba(80,200,255,.3), inset 0 0 10px rgba(80,200,255,.18);
+  }
+  body:not([data-theme]) #ptt.held {
+    border-color:#7fe0ff;
+    animation:jarvis-pulse 1.6s ease-in-out infinite;
+  }
+  body:not([data-theme]) #ptt.held::before { border-color:rgba(170,235,255,.9); }
+  @keyframes jarvis-pulse {
+    0%,100% { box-shadow:0 0 24px rgba(80,200,255,.4), inset 0 0 20px rgba(80,200,255,.22); }
+    50% { box-shadow:0 0 58px rgba(80,200,255,.7), inset 0 0 30px rgba(80,200,255,.38); }
+  }
 
   /* ==================================================================
      DESKTOP JARVIS HUD (≥1100px) — mobile layout is untouched below this
