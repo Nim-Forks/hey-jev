@@ -548,39 +548,67 @@ window.addEventListener("load", () => {
     setSysH();
   }
 
-  // HUD on-screen keyboard (desktop): appends into the command input
+  // HUD on-screen keyboard (desktop): laptop layout, fills the command input
   const kb = $("kbrows");
   const kbPanel = $("hudkb");   // the resize targets the PANEL, so the border and the SYSTEMS panel follow
   if (kb) {
-    const rows = ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
-    for (const r of rows) {
-      const row = document.createElement("div");
-      row.className = "kb-row";
-      for (const ch of r) {
-        const k = document.createElement("button");
-        k.type = "button"; k.className = "kb-key"; k.textContent = ch.toLowerCase();
-        k.addEventListener("click", () => { $("textbox").value += ch.toLowerCase(); $("textbox").focus(); });
-        row.appendChild(k);
-      }
-      kb.appendChild(row);
-    }
-    const last = document.createElement("div");
-    last.className = "kb-row";
-    const mk = (label, cls, fn, wide) => {
-      const k = document.createElement("button");
-      k.type = "button"; k.className = "kb-key " + cls; k.textContent = label;
-      if (wide) k.classList.add("wide");
-      k.addEventListener("click", fn);
-      last.appendChild(k);
+    let shiftOn = false, capsOn = false;
+    const SHIFTMAP = { "1": "!", "2": "@", "3": "#", "4": "$", "5": "%", "6": "^", "7": "&", "8": "*",
+                       "9": "(", "0": ")", "-": "_", "=": "+", "`": "~", "[": "{", "]": "}", "\\": "|",
+                       ";": ":", "'": "\"", ",": "<", ".": ">", "/": "?" };
+    let capsKey = null, shiftKey = null;
+    const paintMods = () => {
+      if (capsKey) capsKey.classList.toggle("on", capsOn);
+      if (shiftKey) shiftKey.classList.toggle("on", shiftOn);
     };
-    mk(",", "", () => { const t = $("textbox"); t.value += ","; t.focus(); });
-    mk(".", "", () => { const t = $("textbox"); t.value += "."; t.focus(); });
-    mk("?", "", () => { const t = $("textbox"); t.value += "?"; t.focus(); });
-    mk("⌫", "danger", () => { const t = $("textbox"); t.value = t.value.slice(0, -1); t.focus(); }, true);
-    mk("CLR", "danger", () => { $("textbox").value = ""; }, true);
-    mk("SPACE", "", () => { const t = $("textbox"); t.value += " "; t.focus(); }, true);
-    mk("SND", "accent", () => $("textform").requestSubmit ? $("textform").requestSubmit() : $("sendbtn").click(), true);
-    kb.appendChild(last);
+    const type = (label) => {
+      const t = $("textbox");
+      let out = label;
+      if (/^[a-z]$/i.test(label)) {
+        out = (shiftOn || capsOn) ? label.toUpperCase() : label.toLowerCase();
+      } else if (shiftOn && SHIFTMAP[label] !== undefined) {
+        out = SHIFTMAP[label];
+      }
+      if (shiftOn) { shiftOn = false; paintMods(); }
+      t.value += out;
+      t.focus();
+    };
+    const act = (a) => {
+      const t = $("textbox");
+      if (a === "bs") t.value = t.value.slice(0, -1);
+      else if (a === "clr") t.value = "";
+      else if (a === "space") t.value += " ";
+      else if (a === "shift") { shiftOn = !shiftOn; paintMods(); }
+      else if (a === "caps") { capsOn = !capsOn; paintMods(); }
+      else if (a === "snd") $("textform").requestSubmit ? $("textform").requestSubmit() : $("sendbtn").click();
+      if (a !== "shift" && a !== "caps") t.focus();
+    };
+    const K = (label, w, a) => ({ label, w: w || 1, a: a || "type" });
+    const L = (ch, w) => K(ch.toUpperCase(), w || 1, "letter");
+    const ROWS = [
+      [K("`"), K("1"), K("2"), K("3"), K("4"), K("5"), K("6"), K("7"), K("8"), K("9"), K("0"), K("-"), K("="), K("⌫", 2.2, "bs")],
+      [L("q"), L("w"), L("e"), L("r"), L("t"), L("y"), L("u"), L("i"), L("o"), L("p"), L("["), L("]"), L("\\")],
+      [K("⇪", 1.7, "caps"), L("a"), L("s"), L("d"), L("f"), L("g"), L("h"), L("j"), L("k"), L("l"), K(";", 1), K("'", 1), K("SND", 2.1, "snd", "accent")],
+      [K("⇧", 2.3, "shift"), L("z"), L("x"), L("c"), L("v"), L("b"), L("n"), L("m"), K(",", 1), K(".", 1), K("/", 1), K("CLR", 1.9, "clr", "danger")],
+      [K("SPACE", 6.5, "space"), K("?", 1), K("-", 1)],
+    ];
+    for (const row of ROWS) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "kb-row";
+      for (const spec of row) {
+        const key = document.createElement("button");
+        key.type = "button";
+        key.className = "kb-key" + (spec.a !== "type" && spec.a !== "letter" ? " " + spec.a : "") +
+                        (spec.a === "letter" ? " kb-letter" : "");
+        key.style.flex = String(spec.w);
+        key.textContent = spec.label;
+        if (spec.a === "caps") capsKey = key;
+        if (spec.a === "shift") shiftKey = key;
+        key.addEventListener("click", () => spec.a === "letter" ? type(spec.label) : act(spec.a));
+        rowEl.appendChild(key);
+      }
+      kb.appendChild(rowEl);
+    }
 
     // corner-drag resize (width + key height), persisted per device;
     // grows downward but never overlaps the Systems panel

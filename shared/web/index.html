@@ -373,8 +373,11 @@
     .tp-more:hover { color:var(--accent); }
 
     /* theme-colored on-screen keyboard (fills #textbox); corner-drag resizable */
-    #hudkb { width:var(--kb-w, 330px); }   /* position:fixed comes from the block above */
+    #hudkb { width:var(--kb-w, 430px); position:relative; }
     #hudkb .kb-row { display:flex; gap:4px; margin-bottom:4px; }
+    #hudkb .kb-row:nth-child(3) { padding-left:2.5%; }
+    #hudkb .kb-row:nth-child(4) { padding-left:5%; }
+    #hudkb .kb-row:nth-child(5) { padding-left:7.5%; }
     #hudkb .kb-key {
       flex:1; height:var(--kb-h, 32px); font-family:ui-monospace,Consolas,monospace; font-size:.78rem;
       color:var(--text); background:color-mix(in srgb, var(--accent) 10%, var(--panel));
@@ -387,6 +390,10 @@
     #hudkb .kb-key.wide { flex:2.2; }
     #hudkb .kb-key.accent { color:var(--accent); border-color:color-mix(in srgb, var(--accent) 45%, var(--panel-border)); }
     #hudkb .kb-key.danger { color:var(--held-color); border-color:var(--held-border); }
+    #hudkb .kb-key.on {
+      color:var(--accent); border-color:var(--accent);
+      background:color-mix(in srgb, var(--accent) 18%, var(--panel));
+    }
     #hudkb .kb-grip {
       position:absolute; right:-2px; bottom:-2px; width:20px; height:20px;
       cursor:nwse-resize; touch-action:none; z-index:2;
