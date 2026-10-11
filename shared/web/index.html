@@ -373,7 +373,7 @@
     .tp-more:hover { color:var(--accent); }
 
     /* theme-colored on-screen keyboard (fills #textbox); corner-drag resizable */
-    #hudkb { width:var(--kb-w, 330px); position:relative; }
+    #hudkb { width:var(--kb-w, 330px); }   /* position:fixed comes from the block above */
     #hudkb .kb-row { display:flex; gap:4px; margin-bottom:4px; }
     #hudkb .kb-key {
       flex:1; height:var(--kb-h, 32px); font-family:ui-monospace,Consolas,monospace; font-size:.78rem;
