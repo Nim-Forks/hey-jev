@@ -604,7 +604,7 @@ const FLEET_API = "https://launch.nimes.in";
 let serverHost = null;               // WS host override (null = this origin)
 let fleetList = [];                  // [{name, url, lat, lon, _host}]
 let fleetHealth = {};                // name -> {up, ms}
-let globeDirty = true, globeHover = null, globeDrag = null;
+let globeDirty = true, globeHover = null, globeDrag = null, globeSelectedName = null;
 let globeRot = { lon: -30, lat: -18 };
 
 function markerPos(i, n) {
@@ -685,6 +685,10 @@ function fleetLoad() {
     fleetHealth = {};
     for (const r of health.results || []) fleetHealth[r.name] = { up: !!r.up, ms: r.ms };
     $("globehealth").textContent = health.up + "/" + health.total + " up";
+    if (globeSelectedName) {
+      const again = fleetList.find((m) => m.name === globeSelectedName);
+      if (again) showGlobeInfo(again);
+    }
     globeDirty = true;
   }).catch(() => {
     $("globehealth").textContent = "fleet health unavailable";
@@ -778,8 +782,11 @@ function drawGlobe() {
     ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fillStyle = st ? (st.up ? "#22c55e" : "#ef4444") : "#8a93a3";
     ctx.fill();
-    if (m._host === (serverHost || location.host) || globeHover === m) {
-      ctx.strokeStyle = globeHover === m ? "rgba(127,212,255,0.95)" : "rgba(255,255,255,0.8)";
+    if (m._host === (serverHost || location.host)) {
+      ctx.strokeStyle = "rgba(255,255,255,0.8)";
+      ctx.lineWidth = Math.max(1, dpr); ctx.stroke();
+    } else if (globeHover === m || m.name === globeSelectedName) {
+      ctx.strokeStyle = "rgba(127,212,255,0.95)";
       ctx.lineWidth = Math.max(1, dpr); ctx.stroke();
     }
   }
@@ -790,18 +797,21 @@ function globeLoop() {
   requestAnimationFrame(globeLoop);
 }
 
-function switchServer(m) {
-  const host = new URL(m.url).host;
-  if (host === (serverHost || location.host)) return;
-  serverHost = host;
-  $("globenow").textContent = m.name;
-  setStatus("Ready", "Switching to " + m.name + "…");
-  wsReady = false;
-  try { ws.close(); } catch {}
-  retries = 0;
-  clearTimeout(retryTimer);
-  connect();
-  globeDirty = true;
+function showGlobeInfo(m) {
+  const el = $("globeinfo");
+  if (!m) { el.innerHTML = ""; return; }
+  const st = fleetHealth[m.name];
+  const cur = m._host === (serverHost || location.host);
+  const bits = [m.voice, m.turn, m.note].filter(Boolean).join(" · ");
+  el.innerHTML = "<b>" + escapeHtml(m.name) + "</b> — " + escapeHtml(m.decision || "") +
+    (st ? (st.up ? ' <span class="up">online</span>' : ' <span class="down">offline</span>') +
+         (st.ms != null ? " · " + st.ms + " ms" : "")
+        : ' <span class="down">state unknown</span>') +
+    "<br>" + escapeHtml(bits) +
+    (cur ? "<br><span style='color:var(--dim)'>this is the server you are on</span>"
+         : "<br><button id='globeswitch'>Switch to " + escapeHtml(m.name) + " →</button>");
+  const btn = $("globeswitch");
+  if (btn) btn.addEventListener("click", () => { location.href = m.url; });
 }
 
 function initGlobe() {
@@ -833,7 +843,7 @@ function initGlobe() {
       tip.innerHTML = "<b>" + escapeHtml(hit.name) + "</b> " +
         (st ? (st.up ? '<span class="up">online</span>' : '<span class="down">offline</span>') +
              (st.ms != null ? " · " + st.ms + " ms" : "") : "state unknown") +
-        "<br><span style='color:var(--dim)'>click to switch</span>";
+        "<br><span style='color:var(--dim)'>click for details</span>";
       tip.style.display = "block";
       tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 190) + "px";
       tip.style.top = (e.clientY + 16) + "px";
@@ -843,7 +853,11 @@ function initGlobe() {
     const moved = globeDrag && globeDrag.moved;
     globeDrag = null;
     cv.classList.remove("dragging");
-    if (!moved && globeHover) switchServer(globeHover);
+    if (!moved && globeHover) {
+      globeSelectedName = (globeSelectedName === globeHover.name) ? null : globeHover.name;
+      showGlobeInfo(globeSelectedName ? fleetList.find((m) => m.name === globeSelectedName) : null);
+      globeDirty = true;
+    }
   });
   cv.addEventListener("pointerleave", () => {
     if (!globeDrag) { globeHover = null; tip.style.display = "none"; globeDirty = true; }
