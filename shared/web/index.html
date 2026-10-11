@@ -22,6 +22,7 @@
     --font:"Segoe UI",system-ui,sans-serif;
     --c-warn:#e0913d; --c-ok:#3fbf5f; --c-listen:#e04545; --c-busy:#3d7be0;
     --c-think:#9355d6; --c-speak:#3fbfb5; --c-err:#e04545; --c-timer:#d6c437;
+    --audio-level:0;
   }
   body { background:var(--bg); color:var(--text); font-family:var(--font);
          display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -105,7 +106,7 @@
   #history button.rerun { color:var(--c-warn); }
   #history button.editbtn { color:var(--c-busy); }
   #history button:active { background:var(--panel-border); }
-  #foot { position:fixed; bottom:.8rem; font-size:.75rem; color:var(--dim); }
+  #foot { position:fixed; bottom:.8rem; font-size:.75rem; color:var(--dim); z-index:40; }
   #foot a { color:var(--dim); }
   #tokenbox { display:none; position:fixed; inset:0; background:var(--scrim);
               flex-direction:column; align-items:center; justify-content:center; z-index:50; }
@@ -219,27 +220,185 @@
   body[data-theme="matrix"] #ptt.held { animation:matrix-glow 1.2s ease-in-out infinite; }
   @keyframes matrix-glow { 0%,100% { box-shadow:0 0 36px rgba(0,255,65,.35); }
                            50% { box-shadow:0 0 66px rgba(0,255,65,.6); } }
+
+  /* ==================================================================
+     DESKTOP JARVIS HUD (≥1100px) — mobile layout is untouched below this
+     ================================================================== */
+  @media (min-width: 1100px) {
+    body {
+      display:grid;
+      grid-template-columns: 300px minmax(0,1fr) 340px;
+      grid-template-rows: 64px minmax(0,1fr) auto 44px;
+      grid-template-areas:
+        "hudtop hudtop hudtop"
+        "panel-sys stage panel-ops"
+        "hudform hudform hudform"
+        "hudfoot hudfoot hudfoot";
+      gap: 8px 24px; padding: 10px 28px 6px; min-height:100vh;
+      background-image:
+        radial-gradient(ellipse at 50% 42%, rgba(127,212,255,.05), transparent 55%),
+        repeating-linear-gradient(0deg, rgba(127,212,255,.022) 0 1px, transparent 1px 42px),
+        repeating-linear-gradient(90deg, rgba(127,212,255,.022) 0 1px, transparent 1px 42px);
+    }
+    body::before { /* corner brackets */
+      content:""; position:fixed; inset:10px; pointer-events:none; z-index:30;
+      background:
+        linear-gradient(var(--accent), var(--accent)) top left / 26px 1px,
+        linear-gradient(var(--accent), var(--accent)) top left / 1px 26px,
+        linear-gradient(var(--accent), var(--accent)) top right / 26px 1px,
+        linear-gradient(var(--accent), var(--accent)) top right / 1px 26px,
+        linear-gradient(var(--accent), var(--accent)) bottom left / 26px 1px,
+        linear-gradient(var(--accent), var(--accent)) bottom left / 1px 26px,
+        linear-gradient(var(--accent), var(--accent)) bottom right / 26px 1px,
+        linear-gradient(var(--accent), var(--accent)) bottom right / 1px 26px;
+      background-repeat:no-repeat; opacity:.55;
+    }
+    #hudtop {
+      grid-area: hudtop; align-self:center; display:flex; align-items:center; gap:18px;
+      border-bottom:1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      padding-bottom:8px; width:100%;
+    }
+    #hudtop .wordmark { font-family:var(--font); font-weight:600; font-size:1.05rem;
+                        letter-spacing:.42em; color:var(--accent); white-space:nowrap; }
+    #hudtop .hudline { flex:1; height:1px; background:color-mix(in srgb, var(--accent) 35%, transparent); }
+    #hudtop .hudmeta { font-family:ui-monospace,Consolas,monospace; font-size:.68rem;
+                       color:var(--dim); letter-spacing:.12em; white-space:nowrap; }
+    #panel-sys { grid-area: panel-sys; align-self:center; }
+    #panel-ops { grid-area: panel-ops; align-self:start; margin-top:10px; }
+    #stage { grid-area: stage; display:flex; flex-direction:column; align-items:center;
+             justify-content:center; position:relative; min-height:0; }
+
+    .hud-panel {
+      background: color-mix(in srgb, var(--bg) 72%, transparent);
+      border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+      border-radius:4px; padding:14px 16px; position:relative;
+      backdrop-filter: blur(3px); width:100%;
+    }
+    .hud-panel::before, .hud-panel::after {
+      content:""; position:absolute; width:14px; height:14px; pointer-events:none;
+      border-color:var(--accent); border-style:solid; opacity:.8;
+    }
+    .hud-panel::before { top:-1px; left:-1px; border-width:1px 0 0 1px; }
+    .hud-panel::after  { bottom:-1px; right:-1px; border-width:0 1px 1px 0; }
+    .hud-panel .hud-title {
+      font-family:ui-monospace,Consolas,monospace; font-size:.62rem; letter-spacing:.3em;
+      color:var(--accent); text-transform:uppercase; margin-bottom:10px; opacity:.85;
+    }
+
+    /* re-homed blocks */
+    body #tiles { width:100%; margin-top:0; grid-template-columns:1fr; gap:6px; }
+    body .tile { display:flex; align-items:baseline; justify-content:space-between;
+                 text-align:left; min-height:0; padding:8px 10px; }
+    body .tile .big { font-size:1.2rem; }
+    body .tile .small { margin:0; font-size:.68rem; }
+    body #historybox { width:100%; margin-top:4px; background:transparent; }
+    body #history { max-height: 34vh; }
+    body #timers { width:100%; font-size:.85rem; margin:0 0 10px; }
+
+    /* stage: ring around the PTT */
+    #ringwrap { position:relative; width:min(46vh, 420px); aspect-ratio:1;
+                display:flex; align-items:center; justify-content:center; }
+    #ringwrap svg { position:absolute; inset:0; width:100%; height:100%; }
+    body #ptt { width:min(30vh, 240px); font-size:1.05rem; position:relative; z-index:2; }
+    body #level { display:none; }   /* the ring is the level meter now */
+
+    #hudtop ~ #stage #status { margin-top:26px; }
+    body #status { justify-content:center; }
+    body #detail { max-width:56ch; }
+    body #heard { max-width:56ch; min-height:2.4em; }
+
+    /* text form pinned to the bottom of the stage area */
+    body #textform { width:min(64ch, 90%); margin-bottom:.4rem; }
+
+    /* the ring */
+    .ring-spin-slow { animation:hud-spin 64s linear infinite; transform-origin:50% 50%; }
+    .ring-spin-mid  { animation:hud-spin 22s linear infinite reverse; transform-origin:50% 50%; }
+    .ring-spin-fast { animation:hud-spin 9s linear infinite; transform-origin:50% 50%; }
+    @keyframes hud-spin { to { transform:rotate(360deg); } }
+    #ring-core {
+      filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 55%, transparent));
+      transition: opacity .3s;
+    }
+    #ring-core .core-glow {
+      fill: color-mix(in srgb, var(--accent) calc(8% + var(--audio-level) * 0.5%), transparent);
+      transition: fill .12s linear;
+    }
+    body[data-state="Listening"] #ring-core .core-glow {
+      fill: color-mix(in srgb, var(--c-listen) calc(12% + var(--audio-level) * 0.7%), transparent);
+    }
+    body[data-state="Listening"] .ring-spin-mid { animation-duration: 7s; }
+    body[data-state="Thinking"] .ring-spin-fast { animation-duration: 2.4s; }
+    body[data-state="Speaking"] .ring-spin-mid { animation-duration: 10s; animation-direction: normal; }
+
+    .hud-ticker { /* heard line in the stage, typed feel */
+      font-family:ui-monospace,Consolas,monospace; font-size:.78rem; color:var(--sub);
+      margin-top:14px; min-height:2.6em; max-width:60ch; text-align:center; letter-spacing:.04em;
+    }
+    body #heard.hud-ticker b { color:var(--accent); }
+  }
 </style>
 </head>
 <body>
-  <form id="textform"><input id="textbox" autocomplete="off" autocapitalize="none"
-    spellcheck="false" placeholder="Type a command, press Enter"><button id="sendbtn">Send</button></form>
-  <button id="ptt">HOLD TO<br>TALK</button>
-  <div id="level"><div id="levelbar"></div></div>
-  <div id="status"><span id="dot">●</span><span id="state">Starting</span><button id="cancelbtn" title="cancel this turn">✕</button></div>
-  <div id="detail">Connecting…</div>
-  <div id="heard"></div>
-  <div id="tiles">
-    <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
-    <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
-    <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
+  <div id="hudtop">
+    <span class="wordmark">HEY·JEV</span>
+    <span class="hudline"></span>
+    <span class="hudmeta" id="hudmeta">SYSTEMS NOMINAL</span>
   </div>
-  <ul id="timers"></ul>
-  <details id="historybox">
-    <summary>History <small id="historycount"></small>
-      <button id="clearhist" title="clear entire history">🗑</button></summary>
-    <ul id="history"></ul>
-  </details>
+  <section id="panel-sys" class="hud-panel">
+    <div class="hud-title">Systems</div>
+    <div id="tiles">
+      <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
+      <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
+      <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
+    </div>
+  </section>
+  <div id="stage">
+    <div id="ringwrap">
+      <svg viewBox="0 0 400 400" aria-hidden="true">
+        <g id="ring-core">
+          <circle class="core-glow" cx="200" cy="200" r="128"/>
+          <circle cx="200" cy="200" r="128" fill="none"
+                  stroke="color-mix(in srgb, var(--accent) 45%, transparent)" stroke-width="1"/>
+          <circle cx="200" cy="200" r="112" fill="none"
+                  stroke="color-mix(in srgb, var(--accent) 18%, transparent)" stroke-width="1"
+                  stroke-dasharray="2 6"/>
+        </g>
+        <g class="ring-spin-slow">
+          <circle cx="200" cy="200" r="186" fill="none"
+                  stroke="color-mix(in srgb, var(--accent) 30%, transparent)" stroke-width="1"
+                  stroke-dasharray="40 14 6 14"/>
+        </g>
+        <g class="ring-spin-mid">
+          <circle cx="200" cy="200" r="164" fill="none"
+                  stroke="color-mix(in srgb, var(--accent) 55%, transparent)" stroke-width="2"
+                  stroke-dasharray="150 330" stroke-linecap="round"/>
+        </g>
+        <g class="ring-spin-fast">
+          <circle cx="200" cy="200" r="150" fill="none"
+                  stroke="color-mix(in srgb, var(--accent) 40%, transparent)" stroke-width="1"
+                  stroke-dasharray="3 9"/>
+        </g>
+      </svg>
+      <button id="ptt">HOLD TO<br>TALK</button>
+    </div>
+    <div id="heard" class="hud-ticker"></div>
+  </div>
+  <section id="panel-ops" class="hud-panel">
+    <div class="hud-title">Ops</div>
+    <ul id="timers"></ul>
+    <details id="historybox">
+      <summary>History <small id="historycount"></small>
+        <button id="clearhist" title="clear entire history">🗑</button></summary>
+      <ul id="history"></ul>
+    </details>
+  </section>
+  <div id="hudform">
+    <div id="status"><span id="dot">●</span><span id="state">Starting</span><button id="cancelbtn" title="cancel this turn">✕</button></div>
+    <div id="detail">Connecting…</div>
+    <div id="level"><div id="levelbar"></div></div>
+    <form id="textform"><input id="textbox" autocomplete="off" autocapitalize="none"
+      spellcheck="false" placeholder="Type a command, press Enter"><button id="sendbtn">Send</button></form>
+  </div>
   <div id="tokenbox">
     <div class="tk-title">Access token required</div>
     <input id="tokeninput" type="password" autocomplete="off" placeholder="server REMOTE_TOKEN">

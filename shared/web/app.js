@@ -231,7 +231,9 @@ async function startMic() {
       let sum = 0;
       for (let i = 0; i < f.length; i++) sum += f[i] * f[i];
       const rms = Math.sqrt(sum / f.length);
-      $("levelbar").style.width = Math.min(100, rms * 600) + "%";
+      const pct = Math.min(100, rms * 600);
+      $("levelbar").style.width = pct + "%";
+      document.documentElement.style.setProperty("--audio-level", pct.toFixed(1));
     }
   };
   session = { ctx, stream };
@@ -263,6 +265,7 @@ function pttUp(ev) {
   send({ type: "audio-end" });
   $("ptt").classList.remove("held");
   $("levelbar").style.width = "0";
+  document.documentElement.style.setProperty("--audio-level", "0");
   setStatus("Transcribing", "Working out what you said…");
   window._wl?.release?.().catch(() => {});
 }
