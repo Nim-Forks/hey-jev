@@ -121,6 +121,7 @@
   #tokenbox .small { color:var(--dim); font-size:.75rem; margin-top:1rem; }
   #tokenbox .small a { color:var(--accent); text-decoration:none; }
 
+  #panel-tp { display:none; }   /* themes + personas: desktop HUD only */
   #hudkb { display:none; }   /* keyboard: desktop HUD only */
 
   /* ---- themes (body[data-theme]) ---- */
@@ -297,17 +298,30 @@
     body #history { max-height: 34vh; }
     body #timers { width:100%; font-size:.85rem; margin:0 0 10px; }
 
-    /* two INDEPENDENT panels, both anchored left: SYSTEMS pinned to the
-       bottom-left corner; the Input keyboard floats ABOVE it and grows
-       UPWARD only — resizing the keyboard never moves Systems. */
+    /* two independent left panels: THEME/PERSONAS on top, keyboard below it
+       (grows downward, clamped above Systems); SYSTEMS pinned bottom-left */
+    #panel-tp {
+      display:block; position:fixed; left:22px; top:76px; width:330px; z-index:36;
+    }
     #panel-sys {
       position:fixed; left:22px; bottom:24px; width:330px; z-index:35;
-      display:block; position:fixed;
+      display:block;
     }
     #hudkb {
-      display:block; position:fixed; left:22px; bottom:calc(24px + var(--sys-h, 180px) + 12px);
+      display:block; position:fixed; left:22px; top:calc(76px + var(--tp-h, 210px) + 12px);
       width:var(--kb-w, 330px); z-index:36;
     }
+    #tp-btns, #tp-personas { display:flex; flex-wrap:wrap; gap:5px; }
+    .tp-btn {
+      padding:5px 10px; font-family:var(--font); font-size:.72rem; letter-spacing:.06em;
+      color:var(--text); background:color-mix(in srgb, var(--accent) 10%, var(--panel));
+      border:1px solid color-mix(in srgb, var(--accent) 30%, var(--panel-border));
+      border-radius:6px; cursor:pointer;
+    }
+    .tp-btn:hover { background:color-mix(in srgb, var(--accent) 22%, var(--panel)); }
+    .tp-btn.active { color:var(--accent); border-color:var(--accent); }
+    .tp-more { font-size:.68rem; color:var(--dim); align-self:center; }
+    .tp-more:hover { color:var(--accent); }
 
     /* theme-colored on-screen keyboard (fills #textbox); corner-drag resizable */
     #hudkb { width:var(--kb-w, 330px); position:relative; }
@@ -431,14 +445,23 @@
     </div>
     <div id="heard" class="hud-ticker"></div>
   </div>
-  <section id="panel-ops" class="hud-panel">
-    <div class="hud-title">Ops</div>
-    <ul id="timers"></ul>
-    <details id="historybox">
-      <summary>History <small id="historycount"></small>
-        <button id="clearhist" title="clear entire history">🗑</button></summary>
-      <ul id="history"></ul>
-    </details>
+  <div id="panel-tp" class="hud-panel">
+    <div class="hud-title">Theme</div>
+    <div id="tp-btns"></div>
+    <div class="hud-title" style="margin-top:12px;">Personas</div>
+    <div id="tp-personas"></div>
+  </div>
+  <div id="hudkb" class="hud-panel">
+    <div class="hud-title">Input</div>
+    <div id="kbrows"></div>
+  </div>
+  <section id="panel-sys" class="hud-panel">
+    <div class="hud-title">Systems</div>
+    <div id="tiles">
+      <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
+      <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
+      <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
+    </div>
   </section>
   <div id="hudform">
     <div id="status"><span id="dot">●</span><span id="state">Starting</span><button id="cancelbtn" title="cancel this turn">✕</button></div>

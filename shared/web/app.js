@@ -128,8 +128,7 @@ function connect() {
     setStatus("Ready", "Connected");
     pollTimers();
     send({ type: "tiles" });
-  };
-  ws.onclose = () => {
+  };  ws.onclose = () => {
     wsReady = false;
     setStatus("Something went wrong", "Disconnected — retrying…");
     const delay = Math.min(8000, 1000 * 2 ** retries++);
@@ -163,6 +162,7 @@ function connect() {
       } else if (msg.type === "tiles") {
         lastTiles = msg.tiles;
         renderTiles();
+        if (msg.personas) renderPersonaPanel(msg.personas);
       } else if (msg.type === "tile-weather") {
         locWeather = msg.weather;
         locWeatherUntil = Date.now() + 30 * 60 * 1000;
@@ -318,10 +318,50 @@ function renderTimers(timers) {
   }
 }
 
+// ------------------------------------------------------------- hud panel (themes + personas)
+function renderPersonaPanel(list) {
+  const wrap = $("tp-personas");
+  if (!wrap || !list) return;
+  wrap.innerHTML = "";
+  for (const p of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tp-btn" + (p.active ? " active" : "");
+    b.textContent = (p.active ? "● " : "") + p.name;
+    b.title = p.description || "";
+    b.addEventListener("click", () => {
+      if (p.active) return;
+      sendText("switch to " + p.name);
+      setTimeout(() => send({ type: "tiles" }), 2500);   // refresh active marker
+    });
+    wrap.appendChild(b);
+  }
+  const more = document.createElement("a");
+  more.className = "tp-more";
+  more.href = "https://launch.nimes.in/personas.html";
+  more.target = "_blank";
+  more.textContent = "+ propose new";
+  wrap.appendChild(more);
+}
+
+function renderThemePanel() {
+  const wrap = $("tp-themes");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  const cur = loadTheme();
+  for (const t of THEMES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tp-btn" + (t === cur ? " active" : "");
+    b.textContent = t;
+    b.addEventListener("click", () => { applyTheme(t); renderThemePanel(); });
+    wrap.appendChild(b);
+  }
+}
+
 // ------------------------------------------------------------- tiles
 let lastTiles = null, locWeather = null, locWeatherUntil = 0;
-function renderTiles() {
-  if (!lastTiles) return;
+function renderTiles() {  if (!lastTiles) return;
   $("t-date").textContent = lastTiles.date || "";
   const w = (Date.now() < locWeatherUntil && locWeather) ? locWeather : lastTiles.weather;
   if (w) {
@@ -542,14 +582,27 @@ window.addEventListener("load", () => {
     mk("SND", "accent", () => $("textform").requestSubmit ? $("textform").requestSubmit() : $("sendbtn").click(), true);
     kb.appendChild(last);
 
-    // corner-drag resize (width + key height), persisted per device
+    // corner-drag resize (width + key height), persisted per device;
+    // grows downward but never overlaps the Systems panel
     const grip = document.createElement("div");
     grip.className = "kb-grip"; grip.title = "drag to resize";
     kb.appendChild(grip);
+    const kbHMax = () => {
+      const sysH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sys-h")) || 180;
+      const sysTop = window.innerHeight - 24 - sysH;
+      const kbTop = kbPanel.getBoundingClientRect().top;
+      return Math.max(24, Math.min(72, (sysTop - 58 - kbTop) / 5));
+    };
+    const clampKb = () => {
+      const hMax = kbHMax();
+      const cur = parseFloat(getComputedStyle(kbPanel).getPropertyValue("--kb-h")) || 32;
+      if (cur > hMax) kbPanel.style.setProperty("--kb-h", hMax + "px");
+    };
     try {
       const saved = JSON.parse(localStorage.getItem("heyjev.kb") || "{}");
       if (saved.w) kbPanel.style.width = saved.w + "px";
-      if (saved.h) kbPanel.style.setProperty("--kb-h", saved.h + "px");
+      if (saved.h) kbPanel.style.setProperty("--kb-h", Math.min(saved.h, 72) + "px");
+      clampKb();
     } catch {}
     let drag = null;
     grip.addEventListener("pointerdown", (e) => {
@@ -564,7 +617,7 @@ window.addEventListener("load", () => {
     grip.addEventListener("pointermove", (e) => {
       if (!drag) return;
       const w = Math.max(240, Math.min(window.innerWidth * 0.55, drag.w + (e.clientX - drag.x)));
-      const h = Math.max(24, Math.min(72, drag.h + (e.clientY - drag.y)));
+      const h = Math.max(24, Math.min(72, kbHMax(), drag.h + (e.clientY - drag.y)));
       kbPanel.style.width = w + "px";
       kbPanel.style.setProperty("--kb-h", h + "px");
     });
@@ -580,6 +633,8 @@ window.addEventListener("load", () => {
     };
     grip.addEventListener("pointerup", endDrag);
     grip.addEventListener("pointercancel", endDrag);
+    window.addEventListener("resize", clampKb);
+    renderThemePanel();
   }
 });
 

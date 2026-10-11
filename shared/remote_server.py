@@ -16,7 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import requests
 
-from shared import brain, config
+from shared import brain, config, personas
 from shared.secrets_store import KEY_NAMES
 
 
@@ -588,7 +588,8 @@ def stt_spec():
 
 def _ws_tiles(conn):
     try:
-        conn.send_text({"type": "tiles", "tiles": brain.tiles_data()})
+        conn.send_text({"type": "tiles", "tiles": brain.tiles_data(),
+                        "personas": personas.list_personas()})
     except Exception:
         pass
 
