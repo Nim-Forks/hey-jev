@@ -9,17 +9,26 @@ const THEMES = ["default", "hal", "ring", "steam", "ouro", "matrix"];
 const HUD_VERSION = "hud.3-20261011";   // bump on every HUD change
 
 function hudDiag(label) {
-  const ids = ["hudtop", "panel-tp", "hudkb", "panel-sys", "stage", "panel-ops", "hudform"];
+  const ids = ["hudleft", "hudtop", "panel-tp", "hudkb", "panel-sys", "stage", "panel-ops", "hudform"];
   const rows = ids.map((id) => {
     const el = document.getElementById(id);
     if (!el) return id + ": MISSING";
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
-    return `${id}: display=${cs.display} pos=${cs.position} rect=${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`;
+    const op = el.offsetParent ? (el.offsetParent.id || el.offsetParent.tagName) : "viewport";
+    return `${id}: display=${cs.display} pos=${cs.position} rect=${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)} offsetParent=${op}`;
   });
+  const bodyCS = getComputedStyle(document.body);
+  const cb = ["transform", "filter", "backdropFilter", "contain", "willChange", "perspective", "zoom"]
+    .map((p) => `${p}=${bodyCS[p]}`).join(" ");
+  const rootCS = getComputedStyle(document.documentElement);
   console.log(`[HUD ${label}] v=${HUD_VERSION} html.lastModified=${document.lastModified}` +
     ` vp=${window.innerWidth}x${window.innerHeight}` +
-    ` saved-kb=${localStorage.getItem("heyjev.kb") || "-"}\n  ` + rows.join("\n  "));
+    ` saved-kb=${localStorage.getItem("heyjev.kb") || "-"}` +
+    ` --tp-h=${rootCS.getPropertyValue("--tp-h") || "-"} --sys-h=${rootCS.getPropertyValue("--sys-h") || "-"}` +
+    ` personas=${(window.lastPersonas || []).length}` +
+    ` bodyCB=[${cb}]\n  ` + rows.join("\n  "));
+  if (wsReady) send({ type: "tiles" });   // re-request so the next diag has fresh data
 }
 function loadTheme() {
   const t = localStorage.getItem("heyjev.theme");
@@ -176,6 +185,7 @@ function connect() {
         renderTimers(msg.timers);
       } else if (msg.type === "tiles") {
         lastTiles = msg.tiles;
+        window.lastPersonas = msg.personas || [];
         renderTiles();
         if (msg.personas) renderPersonaPanel(msg.personas);
       } else if (msg.type === "tile-weather") {
@@ -555,6 +565,14 @@ window.addEventListener("load", () => {
   $("tokensave").addEventListener("click", saveTokenAndConnect);
   $("tokeninput").addEventListener("keydown", (e) => { if (e.key === "Enter") saveTokenAndConnect(); });
 
+  // keep the keyboard anchored below the Theme/Personas panel: report its height
+  const tp = $("panel-tp");
+  if (tp && "ResizeObserver" in window) {
+    const setTpH = () => document.documentElement.style.setProperty("--tp-h", tp.offsetHeight + "px");
+    new ResizeObserver(setTpH).observe(tp);
+    setTpH();
+  }
+
   // keep the keyboard anchored above the Systems panel: report its height
   const sys = $("panel-sys");
   if (sys && "ResizeObserver" in window) {
@@ -631,10 +649,9 @@ window.addEventListener("load", () => {
     grip.className = "kb-grip"; grip.title = "drag to resize";
     kb.appendChild(grip);
     const kbHMax = () => {
-      const sysH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sys-h")) || 180;
-      const sysTop = window.innerHeight - 24 - sysH;
+      const sysTop = $("panel-sys").getBoundingClientRect().top;
       const kbTop = kbPanel.getBoundingClientRect().top;
-      return Math.max(24, Math.min(72, (sysTop - 58 - kbTop) / 5));
+      return Math.max(24, Math.min(72, (sysTop - kbTop - 80) / 5));
     };
     const clampKb = () => {
       const hMax = kbHMax();

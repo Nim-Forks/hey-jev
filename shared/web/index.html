@@ -348,18 +348,20 @@
     }
     body #heard.hud-ticker b { color:var(--accent); }
 
-    /* left rail: THEME/PERSONAS panel, resizable keyboard, SYSTEMS — three
-       INDEPENDENT fixed panels. Resizing the keyboard never moves the others. */
-    #panel-tp {
-      display:block; position:fixed; left:22px; top:76px; width:330px; z-index:36;
+    /* left rail: one FIXED container spanning top-bar to bottom; the three
+       panels anchor INSIDE it — immune to body sizing/containing-block quirks */
+    #hudleft {
+      position:fixed; left:22px; top:76px; bottom:24px; width:330px; z-index:35;
+      pointer-events:none;
     }
-    #panel-sys {
-      display:block; position:fixed; left:22px; bottom:24px; width:330px; z-index:35;
-    }
+    #hudleft > * { pointer-events:auto; }
+    #panel-tp { display:block; position:absolute; left:0; right:0; top:0; }
     #hudkb {
-      display:block; position:fixed; left:22px; top:calc(76px + var(--tp-h, 210px) + 12px);
-      width:var(--kb-w, 330px); z-index:36;
+      display:block; position:absolute; left:0; right:0;
+      top:calc(var(--tp-h, 210px) + 12px);
+      width:auto;
     }
+    #panel-sys { display:block; position:absolute; left:0; right:0; bottom:0; }
     #tp-btns, #tp-personas { display:flex; flex-wrap:wrap; gap:5px; }
     .tp-btn {
       padding:5px 10px; font-family:var(--font); font-size:.72rem; letter-spacing:.06em;
@@ -413,24 +415,26 @@
     <span class="hudline"></span>
     <span class="hudmeta" id="hudmeta">SYSTEMS NOMINAL</span>
   </div>
-  <div id="panel-tp" class="hud-panel">
-    <div class="hud-title">Theme</div>
-    <div id="tp-btns"></div>
-    <div class="hud-title" style="margin-top:12px;">Personas</div>
-    <div id="tp-personas"></div>
-  </div>
-  <div id="hudkb" class="hud-panel">
-    <div class="hud-title">Input</div>
-    <div id="kbrows"></div>
-  </div>
-  <section id="panel-sys" class="hud-panel">
-    <div class="hud-title">Systems</div>
-    <div id="tiles">
-      <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
-      <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
-      <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
+  <div id="hudleft">
+    <div id="panel-tp" class="hud-panel">
+      <div class="hud-title">Theme</div>
+      <div id="tp-btns"></div>
+      <div class="hud-title" style="margin-top:12px;">Personas</div>
+      <div id="tp-personas"></div>
     </div>
-  </section>
+    <div id="hudkb" class="hud-panel">
+      <div class="hud-title">Input</div>
+      <div id="kbrows"></div>
+    </div>
+    <section id="panel-sys" class="hud-panel">
+      <div class="hud-title">Systems</div>
+      <div id="tiles">
+        <div class="tile"><div class="big" id="t-clock">--:--</div><div class="small" id="t-date">…</div></div>
+        <div class="tile" id="t-weather-tile" title="click: weather at my location"><div class="big" id="t-temp">–</div><div class="small" id="t-weather">weather…</div></div>
+        <div class="tile"><div class="big" id="t-sunrise">–</div><div class="small" id="t-sunset">sun…</div></div>
+      </div>
+    </section>
+  </div>
   <div id="stage">
     <div id="ringwrap">
       <svg viewBox="0 0 400 400" aria-hidden="true">
