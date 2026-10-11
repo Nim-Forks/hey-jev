@@ -780,7 +780,7 @@ function drawGlobe() {
     const st = fleetHealth[m.name];
     const r = (3.4 + 2.2 * p.z) * dpr;
     ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = st ? (st.up ? "#22c55e" : "#ef4444") : "#8a93a3";
+    ctx.fillStyle = st ? (st.up ? (m.status === "weak" ? "#eab308" : "#22c55e") : "#ef4444") : "#8a93a3";
     ctx.fill();
     if (m._host === (serverHost || location.host)) {
       ctx.strokeStyle = "rgba(255,255,255,0.8)";
@@ -802,7 +802,9 @@ function showGlobeInfo(m) {
   if (!m) { el.innerHTML = ""; return; }
   const st = fleetHealth[m.name];
   const cur = m._host === (serverHost || location.host);
-  const bits = [m.voice, m.turn, m.note].filter(Boolean).join(" · ");
+  const bits = [m.voice, m.turn, m.note].filter(Boolean).join(" · ") +
+    (m.status === "weak" ? " · WEAK DECIDER — expect clarifications" : "") +
+    (m.score != null ? " · score " + m.score + "/10" : "");
   el.innerHTML = "<b>" + escapeHtml(m.name) + "</b> — " + escapeHtml(m.decision || "") +
     (st ? (st.up ? ' <span class="up">online</span>' : ' <span class="down">offline</span>') +
          (st.ms != null ? " · " + st.ms + " ms" : "")
@@ -843,6 +845,7 @@ function initGlobe() {
       tip.innerHTML = "<b>" + escapeHtml(hit.name) + "</b> " +
         (st ? (st.up ? '<span class="up">online</span>' : '<span class="down">offline</span>') +
              (st.ms != null ? " · " + st.ms + " ms" : "") : "state unknown") +
+        (hit.score != null ? " · score " + hit.score + "/10" : "") +
         "<br><span style='color:var(--dim)'>click for details</span>";
       tip.style.display = "block";
       tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 190) + "px";
