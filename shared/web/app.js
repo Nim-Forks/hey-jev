@@ -134,7 +134,7 @@ function connect() {
   if (ws && ws.readyState === 0) return;
   clearTimeout(retryTimer);
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws = new WebSocket(`${proto}://${serverHost || location.host}/ws`);
   ws.binaryType = "arraybuffer";
   ws.onopen = () => {
     retries = 0;
@@ -149,7 +149,7 @@ function connect() {
     auth.ntfy = loadNtfy();
     sentNtfy = auth.ntfy;
     send(auth);
-    setStatus("Ready", "Connected");
+    setStatus("Ready", serverHost ? "Connected to " + serverHost : "Connected");
     pollTimers();
     send({ type: "tiles" });
   };  ws.onclose = () => {
@@ -599,12 +599,189 @@ function sendText(preset) {
   send({ type: "text", text });
 }
 
+// ------------------------------------------------------------- fleet globe
+const FLEET_API = "https://launch.nimes.in";
+let serverHost = null;               // WS host override (null = this origin)
+let fleetList = [];                  // [{name, url, lat, lon, _host}]
+let fleetHealth = {};                // name -> {up, ms}
+let globeDirty = true, globeHover = null, globeDrag = null;
+let globeRot = { lon: -30, lat: -18 };
+
+function markerPos(i, n) {
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  return {
+    lat: Math.asin(-1 + (2 * (i + 0.5)) / n) * 180 / Math.PI,
+    lon: ((golden * i * 180 / Math.PI) % 360) - 180,
+  };
+}
+
+function fleetLoad() {
+  Promise.all([
+    fetch(FLEET_API + "/instances.json").then((r) => r.json()),
+    fetch(FLEET_API + "/api/health").then((r) => r.json()),
+  ]).then(([inst, health]) => {
+    const list = inst.instances || [];
+    fleetList = list.map((e, i) => Object.assign(
+      { _host: new URL(e.url).host }, e, markerPos(i, list.length)));
+    fleetHealth = {};
+    for (const r of health.results || []) fleetHealth[r.name] = { up: !!r.up, ms: r.ms };
+    $("globehealth").textContent = health.up + "/" + health.total + " up";
+    globeDirty = true;
+  }).catch(() => {
+    $("globehealth").textContent = "fleet health unavailable";
+  });
+}
+
+function fleetEntryAt(x, y) {
+  let best = null, bd = 13 * 13;
+  for (const m of fleetList) {
+    if (m._sz <= 0.05) continue;
+    const dx = m._sx - x, dy = m._sy - y, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = m; }
+  }
+  return best;
+}
+
+function drawGlobe() {
+  const cv = $("globe");
+  if (!cv.clientWidth) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientWidth * 0.7 * dpr);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.44;
+  ctx.clearRect(0, 0, W, H);
+  const limb = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R);
+  limb.addColorStop(0, "rgba(127,212,255,0.13)");
+  limb.addColorStop(1, "rgba(8,12,20,0.55)");
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = limb; ctx.fill();
+  ctx.strokeStyle = "rgba(127,212,255,0.4)"; ctx.lineWidth = Math.max(1, dpr); ctx.stroke();
+
+  const tilt = globeRot.lat * Math.PI / 180;
+  const project = (lat, lon) => {
+    const la = lat * Math.PI / 180, lo = (lon + globeRot.lon) * Math.PI / 180;
+    const x = Math.cos(la) * Math.sin(lo), y = Math.sin(la), z = Math.cos(la) * Math.cos(lo);
+    const y2 = y * Math.cos(tilt) - z * Math.sin(tilt), z2 = y * Math.sin(tilt) + z * Math.cos(tilt);
+    return { x: cx + R * x, y: cy - R * y2, z: z2 };
+  };
+  const line = (pts) => {
+    ctx.beginPath();
+    let pen = false;
+    for (const p of pts) {
+      if (p.z > 0) { if (pen) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); pen = true; }
+      else pen = false;
+    }
+    ctx.stroke();
+  };
+  ctx.lineWidth = Math.max(1, dpr * 0.7);
+  ctx.strokeStyle = "rgba(127,212,255,0.16)";
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const pts = [];
+    for (let lon = -180; lon <= 180; lon += 5) pts.push(project(lat, lon));
+    line(pts);
+  }
+  for (let lon = -180; lon < 180; lon += 30) {
+    const pts = [];
+    for (let lat = -90; lat <= 90; lat += 5) pts.push(project(lat, lon));
+    line(pts);
+  }
+  ctx.strokeStyle = "rgba(127,212,255,0.28)";
+  const eq = [];
+  for (let i = 0; i <= 72; i++) eq.push(project(0, -180 + i * 5));
+  line(eq);
+
+  for (const m of fleetList) {
+    const p = project(m.lat, m.lon);
+    m._sx = p.x; m._sy = p.y; m._sz = p.z;
+    if (p.z <= 0.02) continue;
+    const st = fleetHealth[m.name];
+    const r = (3.4 + 2.2 * p.z) * dpr;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = st ? (st.up ? "#22c55e" : "#ef4444") : "#8a93a3";
+    ctx.fill();
+    if (m._host === (serverHost || location.host) || globeHover === m) {
+      ctx.strokeStyle = globeHover === m ? "rgba(127,212,255,0.95)" : "rgba(255,255,255,0.8)";
+      ctx.lineWidth = Math.max(1, dpr); ctx.stroke();
+    }
+  }
+}
+
+function globeLoop() {
+  if (globeDirty) { globeDirty = false; drawGlobe(); }
+  requestAnimationFrame(globeLoop);
+}
+
+function switchServer(m) {
+  const host = new URL(m.url).host;
+  if (host === (serverHost || location.host)) return;
+  serverHost = host;
+  $("globenow").textContent = m.name;
+  setStatus("Ready", "Switching to " + m.name + "…");
+  wsReady = false;
+  try { ws.close(); } catch {}
+  retries = 0;
+  clearTimeout(retryTimer);
+  connect();
+  globeDirty = true;
+}
+
+function initGlobe() {
+  const cv = $("globe");
+  if (!cv) return;
+  const tip = $("globetip");
+  cv.addEventListener("pointerdown", (e) => {
+    globeDrag = { x: e.clientX, y: e.clientY, moved: false };
+    cv.classList.add("dragging");
+    cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (globeDrag) {
+      const dx = e.clientX - globeDrag.x, dy = e.clientY - globeDrag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) globeDrag.moved = true;
+      globeRot.lon += dx * 0.45;
+      globeRot.lat = Math.max(-80, Math.min(80, globeRot.lat + dy * 0.3));
+      globeDrag.x = e.clientX; globeDrag.y = e.clientY;
+      globeDirty = true;
+      if (globeDrag.moved && globeHover) { globeHover = null; tip.style.display = "none"; }
+      return;
+    }
+    const rect = cv.getBoundingClientRect();
+    const hit = fleetEntryAt((e.clientX - rect.left) * (cv.width / rect.width),
+                             (e.clientY - rect.top) * (cv.height / rect.height));
+    if (hit !== globeHover) { globeHover = hit; globeDirty = true; }
+    if (hit) {
+      const st = fleetHealth[hit.name];
+      tip.innerHTML = "<b>" + escapeHtml(hit.name) + "</b> " +
+        (st ? (st.up ? '<span class="up">online</span>' : '<span class="down">offline</span>') +
+             (st.ms != null ? " · " + st.ms + " ms" : "") : "state unknown") +
+        "<br><span style='color:var(--dim)'>click to switch</span>";
+      tip.style.display = "block";
+      tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 190) + "px";
+      tip.style.top = (e.clientY + 16) + "px";
+    } else tip.style.display = "none";
+  });
+  cv.addEventListener("pointerup", () => {
+    const moved = globeDrag && globeDrag.moved;
+    globeDrag = null;
+    cv.classList.remove("dragging");
+    if (!moved && globeHover) switchServer(globeHover);
+  });
+  cv.addEventListener("pointerleave", () => {
+    if (!globeDrag) { globeHover = null; tip.style.display = "none"; globeDirty = true; }
+  });
+  requestAnimationFrame(globeLoop);
+}
+
 // ------------------------------------------------------------- wire-up
 window.addEventListener("load", () => {
   applyTheme(loadTheme());
   connect();
   renderHistory();
   renderSnippets();
+  initGlobe();
+  fleetLoad();
+  setInterval(fleetLoad, 60000);
   const ptt = $("ptt");
   ptt.addEventListener("pointerdown", pttDown);
   ptt.addEventListener("pointerup", pttUp);

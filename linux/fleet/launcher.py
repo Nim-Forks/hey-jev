@@ -11,6 +11,7 @@ import time
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
@@ -49,6 +50,10 @@ def _requests():
 
 
 app = FastAPI(title="hey-jev fleet launcher")
+
+# the HUD globe (served per instance) reads /instances.json + /api/health cross-origin
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                   allow_methods=["GET", "POST"], allow_headers=["*"])
 
 
 @app.get("/api/persona/requests")
