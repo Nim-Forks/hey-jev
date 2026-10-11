@@ -356,6 +356,7 @@ function renderPersonaPanel(list, switchable) {
   }
   if (title) title.style.display = "";
   wrap.style.display = "";
+  wrap.innerHTML = "";
   for (const p of list) {
     const b = document.createElement("button");
     b.type = "button";
